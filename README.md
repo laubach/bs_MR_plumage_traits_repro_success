@@ -741,8 +741,27 @@ tabix -p vcf ./vcf_imputed/hirundo_rustica.final.auto+chrZ+chrW.snps.maf05.depth
 ```
 
 
+### 12.4 extract hard genotype calls for candidate loci using bcftools and copy to csv file
+```
+bcftools view hirundo_rustica.final.auto+chrZ.snps.maf05.depth.chrom.impute.vcf.gz NC_053453.1:44285485
+
+bcftools view hirundo_rustica.final.auto+chrZ.snps.maf05.depth.chrom.impute.vcf.gz NC_053488.1:19332900
+
+bcftools view hirundo_rustica.final.auto+chrZ.snps.maf05.depth.chrom.impute.vcf.gz NC_053488.1:4420622
+
+bcftools view hirundo_rustica.final.auto+chrZ.snps.maf05.depth.chrom.impute.vcf.gz NC_053450.1:100834905
+```
 
 
+### 12.5 Copy imputed vcf file to local drive
+```
+scp zchlaubach@Terminator:/data2/hirundo_plumage_MR/vcf_imputed/hirundo_rustica.final.auto+chrZ.snps.maf05.depth.chrom.impute.vcf.gz /Users/zacharylaubach/WD/Git/swallow/bs_MR_plumage_traits_repro_success/raw_data
+
+scp zchlaubach@Terminator:/data2/hirundo_plumage_MR/vcf_imputed/hirundo_rustica.final.auto+chrZ+chrW.snps.maf05.depth.chrom.female.impute.vcf.gz /Users/zacharylaubach/WD/Git/swallow/bs_MR_plumage_traits_repro_success/raw_data
+
+scp zchlaubach@Terminator:/data2/hirundo_plumage_MR/vcf_imputed/hirundo_rustica.final.auto+chrZ.snps.maf05.depth.chrom.male.impute.vcf.gz /Users/zacharylaubach/WD/Git/swallow/bs_MR_plumage_traits_repro_success/raw_data
+
+```
 
 
 

@@ -3,11 +3,11 @@
 #############     Assessing the causal effect of plumage traits    #############
 #############     on reproduction using Mendelian randomization    #############   
 #############                                                      #############
-#############                     2. Tidy data                     #############
+#############           2. Tidy genetic relatedness data           #############
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############               last updated: 9 Sept 2025              #############
+#############             last updated: 27 April 2026              #############
 ################################################################################
 
 
@@ -16,7 +16,7 @@
   # Code Blocks
     # 1. Configure work space
     # 2. Import data 
-    # 3. Tidy attribute data frame
+    # 3. Tidy relatedness data frame 
     # 4. Export data
   
 
@@ -77,27 +77,26 @@
 ###############################################################################    
 
   ### 2.1 Import sample data files
-    ## a) load genome phenotype and reproduction data
-      load(here('data/2_genome_pheno_repro_df.RData'))
+    ## a) load snps, phenotype, and reproduction data
+      load(here('data/2-4_snps_pheno_repro_df.RData'))
       
     ## b) Load relatedness data
       load(here('data/2_relate_df.RData'))
+      
+      
 
 ###############################################################################
 ##############          3. Tidy relatedness data frame           ##############
 ############################################################################### 
   
-  ### 3.1  Basic tidying relate_df
-    ## a) Format data to all lower case
-      relate_df <- AllCharactersToLower(relate_df)
-      
-    ## b) Format variable names
+  ### 3.1  Basic tidying relate_d
+    ## a) Format variable names
       relate_df <- FormatVarNames(relate_df)
       
-    ## c) intersect relate_df with individuals from genome_pheno_repro_df
+    ## b) intersect relate_df with individuals from snps_pheno_repro_df
       relate_coef_df <- relate_df %>%
-        filter (ind1 %in% genome_pheno_repro_df$seq.id & 
-                ind2 %in% genome_pheno_repro_df$seq.id)
+        filter (ind1 %in% snps_pheno_repro_df$sample.id & 
+                ind2 %in% snps_pheno_repro_df$sample.id)
     
     ## f) tidy relate_coef_df; (pi_hat is the relatedness coef)  
       relate_coef_df <- relate_coef_df %>%
@@ -105,7 +104,7 @@
         select(c(ind1, ind2, coef.relate))
       
     
-    ## g) Check if there are 171 individuals in both columns
+    ## g) Check if there are 179 individuals in both columns
       length(unique(relate_coef_df$ind1))
       length(unique(relate_coef_df$ind2))
            
@@ -115,7 +114,7 @@
         ind1.unique <- setdiff(relate_coef_df$ind1, relate_coef_df$ind2)
         ind2.unique <- setdiff(relate_coef_df$ind2, relate_coef_df$ind1)
     
-      # identify wich row has both unique ind ID
+      # identify which row has both unique ind ID
         row <- which(relate_coef_df$ind1 == ind1.unique & 
                        relate_coef_df$ind2 == ind2.unique)
           
@@ -164,8 +163,46 @@
       diag(relate_mat) <- 1.0
 
   
+  ### 3.2 Subset relatedness matrices to match phenotype data frames
+    ## a) Create a subset relatedness matrix matching snps_plum_repro_df
+      relate_mat_plum_snps <- relate_mat[rownames(relate_mat) %in% 
+                                               snps_plum_repro_df$sample.id, 
+                                             colnames(relate_mat) %in% 
+                                           snps_plum_repro_df$sample.id]
+      
+    ## b) Create a subset relatedness matrix matching snps_TS_repro_df
+      relate_mat_TS_snps <- relate_mat[rownames(relate_mat) %in% 
+                                            snps_TS_repro_df$sample.id, 
+                                          colnames(relate_mat) %in% 
+                                            snps_TS_repro_df$sample.id]   
+      
+    # ## c) Create a subset relatedness matrix matching snps_plum_fecund_f_df
+    #   relate_mat_plum_fecund_f <- relate_mat[rownames(relate_mat) %in% 
+    #                             snps_plum_fecund_f_df$sample.id, 
+    #                           colnames(relate_mat) %in% 
+    #                             snps_plum_fecund_f_df$sample.id]
+    #   
+    # ## d) Create a subset relatedness matrix matching snps_plum_pat_m_df
+    #   relate_mat_plum_pat_m <- relate_mat[rownames(relate_mat) %in% 
+    #                                       snps_plum_pat_m_df$sample.id, 
+    #                                     colnames(relate_mat) %in% 
+    #                                       snps_plum_pat_m_df$sample.id]
+    #   
+    # ## e) Create a subset relatedness matrix matching snps_TS_fecund_f_df
+    #   relate_mat_TS_fecund_f <- relate_mat[rownames(relate_mat) %in% 
+    #                                       snps_TS_fecund_f_df$sample.id, 
+    #                                     colnames(relate_mat) %in% 
+    #                                       snps_TS_fecund_f_df$sample.id]
+    #   
+    # ## f) Create a subset relatedness matrix matching snps_TS_pat_m_df
+    #   relate_mat_TS_pat_m <- relate_mat[rownames(relate_mat) %in% 
+    #                                       snps_TS_pat_m_df$sample.id, 
+    #                                  colnames(relate_mat) %in% 
+    #                                    snps_TS_pat_m_df$sample.id]
+      
+      
 
-  # ### 3.4 toy data example tidying relate_df
+  # ### 3.5 toy data example tidying relate_df
   #   ## convert relate_coef_df (pi_hat is the relatedness coef)
   #   
   #   pairwise_data <- data.frame(
@@ -209,8 +246,12 @@
       # RData file.
       
     ## a) Save and export relatedness data
-      save(file = here('data/4_relatedness_data.RData'), 
-           list = c('relate_mat', 'relate_coef_df'))
+      save(file = here('data/3-4_relate_df.RData'), 
+           list = c('relate_mat', 'relate_coef_df', 
+                    'relate_mat_plum_snps', 'relate_mat_TS_snps'
+                    # , 'relate_mat_plum_fecund_f', 'relate_mat_plum_pat_m',
+                    # 'relate_mat_TS_fecund_f', 'relate_mat_TS_pat_m'
+                    ))
       
       
 

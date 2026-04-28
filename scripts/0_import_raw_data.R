@@ -18,7 +18,7 @@
   # Code Blocks
     # 1. Configure work space
     # 2. Import pheno. and repro. data
-    # 3. Import genome meta data
+    # 3. Import genomic data
     # 4. Import relatedness data
     # 5. Export data 
   
@@ -39,10 +39,13 @@
       
   ### 1.2 Install and load CRAN packages   
     ## a) Data Manipulation and Descriptive Stats Packages
-      # load tidyverse packages
+      # load tidyverse package
         library ('tidyverse')
+      
+      # load vcfR package
+        library ('vcfR')
  
-      # load here packages
+      # load here package
         library ('here')
 
         
@@ -65,22 +68,54 @@
 ##############        2. Import pheno. and repro. data           ##############
 ###############################################################################    
       
-  ### 2.1 Import sample data file
+  ### 2.1 Import phenotype data file
     ## a)  Import AdultData2008-2024.csv as df
       pheno_reprod_df <- read_csv(here('raw_data/AdultData2008-2024.csv'))
+    
+  
+  ### 2.2 Import paternity data
+    ## a) create a list of csv files that match the pattern
+      pat_file_list <- list.files(path = here('raw_data/'),
+                                  pattern = '^fert.*\\.csv$', 
+                                  recursive = T, full.names = T)
+      
+    ## b) load files from list into a single data frame
+      paternity_df <- do.call(rbind, lapply(pat_file_list, read.csv))
     
     
     
 ###############################################################################
-##############            3. Import genome meta data             ##############
+##############              3. Import genomic data               ##############
 ###############################################################################    
-      
-  ### 3.1  Import genome meta data
+    
+  ### 3.1 Import imputed snps for candidate loci data
     ## a) Import CO_genomes_2021-2023_metadata.csv as df
-      genome_meta_df <- read_csv(here('raw_data/',
-                                      'CO_genomes_2021-2023_metadata.csv'))    
+      snps_df <- read_csv(here('raw_data/',
+                                    'imputed_snps_candidate_loci.csv'))   
+    
+    
+  ### 3.2 Import genomic data (vcf.gz files)
+    # ## a) female imputed vcf.gz files
+    #   vcf_female_df <-read.vcfR(
+    #     here('raw_data/hirundo_rustica.final.auto+chrZ+chrW.snps.maf05.depth.chrom.female.impute.vcf.gz'))
+    # 
+    # ## b) male imputed vcf.gz files
+    #   vcf_male_df <-read.vcfR(
+    #     here('raw_data/hirundo_rustica.final.auto+chrZ+chrW.snps.maf05.depth.chrom.male.impute.vcf.gz'))
+    #   
+    
+        
+  ### 3.3 Import genome meta data
+    ## a) create a list of txt files that match the pattern
+      coverage_list <- list.files(path = here('cov/'),
+                                  pattern = '^coverage.*\\.txt$', 
+                                  recursive = T, full.names = T)
+      
+    ## b) load files from list into a single data frame
+      coverage_df <- do.call(rbind, lapply(coverage_list, 
+                                           read.table))  
+    
 
-     
          
 ###############################################################################
 ##############            4. Import relatedness data             ##############
@@ -91,21 +126,7 @@
       relate_df <- read.table(here('raw_data/',
                                 'CO-2021-2023.thin10k.GL-recalc.relate'), 
                                sep = '\t', header = TRUE)
-    
-  
-    
-###############################################################################
-##############              5. Import genomic data               ##############
-###############################################################################    
-    
-  ### 5.1 Import genomic data (vcfgz files)
-    ## a) 2021-2023 relatedness data
-    
-    vcf_temp_df <- read.vcfR(
-      here('raw_data/hirundo_rustica.recalc.batch2.mask.CO-2023.maf05.thin10k.vcf.gz'))
-  
-    
-
+ 
       
   
 ###############################################################################
@@ -117,25 +138,35 @@
       # Files are saved in the 'data' folder in the working directory as an
       # RData file.
       save(file = here('data/1_pheno_reprod_df.RData'), 
-           list = c('pheno_reprod_df'))
+           list = c('pheno_reprod_df', 'paternity_df'))
       
-
-    ## b) Save and export genomic meta data
+    ## b) Save and export imputed snps for candidate loci
+      # Files are saved in the 'data' folder in the working directory as an
+      # RData file.
+      save(file = here('data/1_snps_df.RData'), 
+           list = c('snps_df'))
+      
+    ## c) Save and export raw genomics data
+      # Files are saved in the 'data' folder in the working directory as an
+      # RData file.
+      # save(file = here('data/3_vcf_female_df.RData'), 
+      #      list = c('vcf_female_df'))
+      # 
+      # save(file = here('data/3_vcf_male_df.RData'), 
+      #      list = c('vcf_male_df'))
+      
+    ## d) Save and export genomic meta data
       # Files are saved in the 'data' folder in the working directory as an
       # RData file.
       save(file = here('data/1_genome_meta_df.RData'), 
-           list = c('genome_meta_df'))
+           list = c('coverage_df'))
       
-    ## c) Save and export raw relatedness data
+    ## e) Save and export raw relatedness data
       # Files are saved in the 'data' folder in the working directory as an
       # RData file.
       save(file = here('data/2_relate_df.RData'), 
            list = c('relate_df'))
       
-    ## d) Save and export raw genomics data
-      # Files are saved in the 'data' folder in the working directory as an
-      # RData file.
-      save(file = here('data/3_vcf_temp_df.RData'), 
-           list = c('vcf_temp_df'))
+    
       
    
