@@ -104,11 +104,11 @@
         select(c(ind1, ind2, coef.relate))
       
     
-    ## g) Check if there are 179 individuals in both columns
+    ## g) Check if there are 270 individuals in both columns
       length(unique(relate_coef_df$ind1))
       length(unique(relate_coef_df$ind2))
            
-    ## h) Check if all inidivudals are in both ind1 and ind2 columns
+    ## h) Check if all individuals are in both ind1 and ind2 columns
       # to generate the matrix from the pairwise lists, each ID must occur at 
       # least once in each ind. ID column
         ind1.unique <- setdiff(relate_coef_df$ind1, relate_coef_df$ind2)
@@ -166,8 +166,8 @@
   ### 3.2 Subset relatedness matrices to match phenotype data frames
     ## a) Create a subset relatedness matrix matching snps_plum_repro_df
       relate_mat_plum_snps <- relate_mat[rownames(relate_mat) %in% 
-                                               snps_plum_repro_df$sample.id, 
-                                             colnames(relate_mat) %in% 
+                                            snps_plum_repro_df$sample.id, 
+                                          colnames(relate_mat) %in% 
                                            snps_plum_repro_df$sample.id]
       
     ## b) Create a subset relatedness matrix matching snps_TS_repro_df
@@ -176,29 +176,29 @@
                                           colnames(relate_mat) %in% 
                                             snps_TS_repro_df$sample.id]   
       
-    # ## c) Create a subset relatedness matrix matching snps_plum_fecund_f_df
-    #   relate_mat_plum_fecund_f <- relate_mat[rownames(relate_mat) %in% 
-    #                             snps_plum_fecund_f_df$sample.id, 
-    #                           colnames(relate_mat) %in% 
-    #                             snps_plum_fecund_f_df$sample.id]
-    #   
-    # ## d) Create a subset relatedness matrix matching snps_plum_pat_m_df
-    #   relate_mat_plum_pat_m <- relate_mat[rownames(relate_mat) %in% 
-    #                                       snps_plum_pat_m_df$sample.id, 
-    #                                     colnames(relate_mat) %in% 
-    #                                       snps_plum_pat_m_df$sample.id]
-    #   
-    # ## e) Create a subset relatedness matrix matching snps_TS_fecund_f_df
-    #   relate_mat_TS_fecund_f <- relate_mat[rownames(relate_mat) %in% 
-    #                                       snps_TS_fecund_f_df$sample.id, 
-    #                                     colnames(relate_mat) %in% 
-    #                                       snps_TS_fecund_f_df$sample.id]
-    #   
-    # ## f) Create a subset relatedness matrix matching snps_TS_pat_m_df
-    #   relate_mat_TS_pat_m <- relate_mat[rownames(relate_mat) %in% 
-    #                                       snps_TS_pat_m_df$sample.id, 
-    #                                  colnames(relate_mat) %in% 
-    #                                    snps_TS_pat_m_df$sample.id]
+    ## c) Create a subset relatedness matrix matching snps_plum_repro_f_df
+      relate_mat_plum_repro_f <- relate_mat[rownames(relate_mat) %in%
+                                              snps_plum_repro_f_df$sample.id, 
+                                            colnames(relate_mat) %in%
+                                              snps_plum_repro_f_df$sample.id]
+      
+    ## d) Create a subset relatedness matrix matching snps_plum_repro_m_df
+      relate_mat_plum_repro_m <- relate_mat[rownames(relate_mat) %in%
+                                            snps_plum_repro_m_df$sample.id, 
+                                          colnames(relate_mat) %in%
+                                            snps_plum_repro_m_df$sample.id]
+      
+    ## e) Create a subset relatedness matrix matching snps_TS_repro_f_df
+      relate_mat_TS_repro_f <- relate_mat[rownames(relate_mat) %in%
+                                             snps_TS_repro_f_df$sample.id, 
+                                           colnames(relate_mat) %in%
+                                             snps_TS_repro_f_df$sample.id]
+      
+    ## f) Create a subset relatedness matrix matching snps_TS_repro_m_df
+      relate_mat_TS_repro_m <- relate_mat[rownames(relate_mat) %in%
+                                          snps_TS_repro_m_df$sample.id, 
+                                        colnames(relate_mat) %in%
+                                          snps_TS_repro_m_df$sample.id]
       
       
 
@@ -249,8 +249,8 @@
       save(file = here('data/3-4_relate_df.RData'), 
            list = c('relate_mat', 'relate_coef_df', 
                     'relate_mat_plum_snps', 'relate_mat_TS_snps'
-                    # , 'relate_mat_plum_fecund_f', 'relate_mat_plum_pat_m',
-                    # 'relate_mat_TS_fecund_f', 'relate_mat_TS_pat_m'
+                    , 'relate_mat_plum_repro_f', 'relate_mat_plum_repro_m',
+                    'relate_mat_TS_repro_f', 'relate_mat_TS_repro_m'
                     ))
       
       

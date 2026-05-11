@@ -7,7 +7,7 @@
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############             last updated: 16 April 2026              #############
+#############               last updated: 7 May 2026               #############
 ################################################################################
 
 
@@ -89,9 +89,19 @@
 ###############################################################################    
     
   ### 3.1 Import imputed snps for candidate loci data
-    ## a) Import CO_genomes_2021-2023_metadata.csv as df
-      snps_df <- read_csv(here('raw_data/',
-                                    'imputed_snps_candidate_loci.csv'))   
+    ## a) imputed snps for ventral color candidate loci data 
+      snps_plum_df <- read_csv(here('raw_data/',
+                                    'candidate_snps_vent_color.csv'))   
+      
+    ## b) imputed snps for ventral color candidate loci data 
+      snps_TS_df <- read_csv(here('raw_data/',
+                               'candidate_snps_ts.csv'))   
+      
+    ## c) left join snps_plum_df to snps_TS_df
+      snps_df <- snps_plum_df  %>%
+        left_join(snps_TS_df,
+                  by = c('sample.id' = 'sample.id'), 
+                  copy = F) 
     
     
   ### 3.2 Import genomic data (vcf.gz files)
