@@ -148,34 +148,37 @@
                                             intact.rts == 'n'
                                                  ~ mean.lts)) 
       
-    # ## k) create a variable ventral.avg.bright that is the mean of the throat
-    #   # breast, belly, and vent avg. brightness values
-    #   pheno_reprod_df <- pheno_reprod_df %>% 
-    #     mutate(ventral.avg.bright = rowMeans(across(c(throat.avg.bright, 
-    #                                                   breast.avg.bright,
-    #                                                   belly.avg.bright,
-    #                                                   vent.avg.bright)),
-    #                                          na.rm = TRUE))
+    ## k) create a variable ventral.avg.bright that is the mean of the throat
+      # breast, belly, and vent avg. brightness values
+      pheno_reprod_df <- pheno_reprod_df %>%
+        mutate(ventral.avg.bright = rowMeans(across(c(throat.avg.bright,
+                                                      breast.avg.bright,
+                                                      belly.avg.bright,
+                                                      vent.avg.bright)),
+                                             na.rm = TRUE))
       
+
+    ## l) coerce non-numeric values to NA for eggs.1, eggs.2, eggs.3 and
+        # eggs.4
+      pheno_reprod_df <- pheno_reprod_df %>%
+        mutate(across(c(eggs.1, eggs.2, eggs.3, eggs.4), ~as.numeric(.)))
       
-    # ## k) coerce non-numeric values to NA for eggs.1, eggs.2, eggs.3 and 
-    #     # eggs.4 
-    #   pheno_reprod_df <- pheno_reprod_df %>% 
-    #     mutate(across(c(eggs.1, eggs.2, eggs.3, eggs.4), ~as.numeric(.)))
+    ## m) create a variable for nest attempts 1&2 fecundity
+      pheno_reprod_df <- pheno_reprod_df  %>%
+        rowwise()%>%
+        mutate(sum.fecundity = sum(eggs.1, eggs.2,
+                                   #eggs.3, eggs.4,
+                                     na.rm = T))
+      # set male fecudity to NA
+      pheno_reprod_df$sum.fecundity <- ifelse (pheno_reprod_df$sex == 'm', NA, 
+                                               pheno_reprod_df$sum.fecundity)
       
-    # ## k) create a variable for nest attempts 1&2 fecundity
-    #   pheno_reprod_df <- pheno_reprod_df  %>%
-    #     rowwise()%>%
-    #     mutate(sum.fecundity = sum(eggs.1, eggs.2, 
-    #                                #eggs.3, eggs.4, 
-    #                                  na.rm = T))
-      
-    ## k) coerce non-numeric values to NA for day.12.1, day.12.2, day.12.3,
+    ## n) coerce non-numeric values to NA for day.12.1, day.12.2, day.12.3,
       # and day.12.4 fledgling
       pheno_reprod_df <- pheno_reprod_df %>%
         mutate(across(c(day.12.1, day.12.2, day.12.3, day.12.4), ~as.numeric(.)))
       
-    ## l) create a variable for total fledglings from each adults social pair
+    ## o) create a variable for total fledglings from each adults social pair
         # nest
       pheno_reprod_df <- pheno_reprod_df  %>%
         rowwise()%>%
@@ -216,15 +219,43 @@
         select(-c(mom.id, band.mom)) %>%
         filter(!is.na(dad.id))
       
-    ## i) Calculate female reproductive success (sum of her wp and ep nestlings
-      # that survive to ~12 days in broods 1 and 2)
-      mom_repro_df <- mom_repro_df%>%
+    ## i) Calculate female ep reproductive success (sum of her ep and dad_unk 
+      # nestlings that survive to ~12 days in broods 1 and 2)
+      mom_ep_repro_df <- mom_repro_df%>%
         group_by(mom.id, year) %>%
-        summarise(tot.repro = sum(fert, na.rm = TRUE)) %>%
-        rename(sample.id = mom.id)  %>%
+        filter(fert.type == 'ep' | fert.type == 'dad_unk') %>%
+        summarise(ep.repro =  sum(fert, na.rm = TRUE)) %>%
+        rename(sample.id = mom.id) %>%
         ungroup()
       
     ## j) Calculate female reproductive success (sum of her wp and ep nestlings
+      # that survive to ~12 days in broods 1 and 2)   
+      mom_repro_df <- mom_repro_df%>%
+        group_by(mom.id, year) %>%
+        summarise(tot.repro = sum(fert, na.rm = TRUE)) %>%
+        rename(sample.id = mom.id) %>%
+        ungroup()
+      
+    ## k) left join tot_repro_df to pheno_reprod_df
+      mom_repro_df <- mom_repro_df  %>%
+        left_join(mom_ep_repro_df,
+                  by = c('sample.id' = 'sample.id', 'year' = 'year'), 
+                  copy = F) 
+      
+    ## l) convert ep.repro that are NA to 0
+      mom_repro_df$ep.repro <- ifelse(is.na(mom_repro_df$ep.repro), 0, 
+                                      mom_repro_df$ep.repro)
+      
+    ## m) Calculate male ep reproductive success (sum of his ep  
+      # nestlings that survive to ~12 days in broods 1 and 2)
+      dad_ep_repro_df <- dad_repro_df%>%
+        group_by(dad.id, year) %>%
+        filter(fert.type == 'ep') %>%
+        summarise(ep.repro =  sum(fert, na.rm = TRUE)) %>%
+        rename(sample.id = dad.id) %>%
+        ungroup()
+      
+    ## n) Calculate male reproductive success (sum of her wp and ep nestlings
       # that survive to ~12 days in broods 1 and 2)
       dad_repro_df <- dad_repro_df%>%
         group_by(dad.id, year) %>%
@@ -232,16 +263,32 @@
         rename(sample.id = dad.id) %>%
         ungroup()
       
-    ## k) combine mom_repro_df and dad_repro_df
+    ## o) left join tot_repro_df to pheno_reprod_df
+      dad_repro_df <- dad_repro_df  %>%
+        left_join(dad_ep_repro_df,
+                  by = c('sample.id' = 'sample.id', 'year' = 'year'), 
+                  copy = F) 
+      
+    ## p) convert ep.repro that are NA to 0
+      dad_repro_df$ep.repro <- ifelse(is.na(dad_repro_df$ep.repro), 0, 
+                                      dad_repro_df$ep.repro)
+      
+    ## q) combine mom_repro_df and dad_repro_df
       tot_repro_df <- rbind(mom_repro_df, dad_repro_df)
       
-    ## l) left join tot_repro_df to pheno_reprod_df
+    ## r) left join tot_repro_df to pheno_reprod_df
       pheno_reprod_df <- pheno_reprod_df  %>%
         left_join(tot_repro_df,
                   by = c('sample.id' = 'sample.id', 'year' = 'year'), 
                   copy = F) 
+    
+  # NOTE: distinguish between NA due to 0 fledg vs no paternity data    
+    ## s) fill in ep.repro zero according to sum.fledge
+      pheno_reprod_df$ep.repro <- ifelse(
+        is.na(pheno_reprod_df$ep.repro) & 
+          pheno_reprod_df$sum.fledge == 0, 0, pheno_reprod_df$ep.repro)
       
-    ## m) fill in tot.repro zero according to sum.fledge
+    ## t) fill in tot.repro zero according to sum.fledge
       pheno_reprod_df$tot.repro <- ifelse(
         is.na(pheno_reprod_df$tot.repro) & 
           pheno_reprod_df$sum.fledge == 0, 0, pheno_reprod_df$tot.repro)

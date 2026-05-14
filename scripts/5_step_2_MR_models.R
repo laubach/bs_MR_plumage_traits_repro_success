@@ -7,7 +7,7 @@
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############              last updated: 10 May 2026               #############
+#############              last updated: 12 May 2026               #############
 ################################################################################
 
 
@@ -135,76 +135,8 @@
 ###############################################################################
 ##############          3. Model fit/diagnostic checks           ##############
 ###############################################################################         
-      
-      
-      # kitlg_fit_repro_mod <- glmmTMB(NCalls~(FT+ArrivalTime)*SexParent+ 
-      #                                  offset(log(BroodSize))+(1|Nest), 
-      #                                data=Owls, ziformula=~1, family=poisson)
-      
-  ### 3.1 Model fitting to identify the appropriate distribution for count
-      # data
-    ## a) Fit glmmTMB model (tot.repro ~ snps.plum.pred.val) 
-        # with Poisson distribution
-      snps_pred_plum_repro_poiss_mod <-  glmmTMB(tot.repro ~ 
-                              snps.plum.pred.val
-                            + sex  +
-                        # proportional covariance matrix based on relatedness
-                            propto(0 + sample.id | 1, relate_mat_plum_snps),
-                            data = snps_plum_repro_df,
-                            family = poisson)
-      
-      
-    ## b) udpate the Poisson model to include zero-inflation
-      snps_pred_plum_repro_zinf_poiss_mod <- 
-        update(snps_pred_plum_repro_poiss_mod, ziformula=~1)
 
-    ## c) udpate the Poisson model to fit a negative binomial 2 distribution
-        # where variance = µ(1 + µ/k)
-      snps_pred_plum_repro_nb2_mod <- 
-        update(snps_pred_plum_repro_poiss_mod, family = nbinom2)
-      
-    ## d) udpate the negative binomial 2 model to include zero-inflation
-      snps_pred_plum_repro_zinf_nb2_mod <- 
-        update(snps_pred_plum_repro_nb2_mod, ziformula=~1)
-      
-    ## e) udpate the Poisson model to fit a negative binomial 1 distribution
-      # where variance = ϕµ
-      snps_pred_plum_repro_nb1_mod <- 
-        update(snps_pred_plum_repro_poiss_mod, family = nbinom1)
-      
-    ## f) udpate the negative binomial 1 model to include zero-inflation
-      snps_pred_plum_repro_zinf_nb1_mod <- 
-        update(snps_pred_plum_repro_nb1_mod,  ziformula=~1)
 
-        
-    ## g) assess delta AIC using bbmle to determine best fitting model   
-      AICtab(snps_pred_plum_repro_poiss_mod, 
-             snps_pred_plum_repro_zinf_poiss_mod,
-             snps_pred_plum_repro_nb2_mod, 
-             snps_pred_plum_repro_zinf_nb2_mod, 
-             snps_pred_plum_repro_nb1_mod, 
-             snps_pred_plum_repro_zinf_nb1_mod)
-    
-      
-  ### 4.2 check diagnostics of best fitting model using 'DHARMa' and 
-      # 'performance' packages
-    ## a)  simulate residuals
-      resid_best_fit_mod <- 
-        simulateResiduals(fittedModel = snps_pred_plum_repro_zinf_nb1_mod, 
-                               n = 250)
-   
-    ## b) plot residuals
-      plot(resid_best_fit_mod)
-      
-    ## c) assess over dispersion
-      testDispersion(resid_best_fit_mod)
-      performance::check_overdispersion(snps_pred_plum_repro_zinf_nb1_mod) 
-      
-    ## d) assess zero inflation
-      testZeroInflation(resid_best_fit_mod)
-      performance::check_zeroinflation(snps_pred_plum_repro_zinf_nb1_mod)
-
-    
       
 ###############################################################################
 ##############   5. Step 2: Female fit values on reproduction    ##############
@@ -216,15 +148,11 @@
       # to get the unconfounded effect of traits on reproductive success.
       
 
-  ### 5.1 SNP dosage predicted breast brightness on reproduction - female models
+  ### 5.1 SNPs predicted breast brightness on reproduction - female models
     ## a) glmmTMB model for effect of predicted breast brightness on the 
         # number of nestlings fledged from nest attempts 1 and 2
-      snps_sum_pred_plum_repro_zinf_nb1_f_mod <-  glmmTMB(tot.repro ~ 
-                            # snps.plum.pred.val +
-                             snps.sum.plum.pred.val +
-                            # pgs.plum.pred.val +
-                            
-                            #+ sex  +
+      snps_pred_plum_repro_zinf_nb1_f_mod <-  glmmTMB(sum.fecundity ~ 
+                            scale(snps.plum.pred.val) +
                           # proportional covariance matrix based on relatedness
                             propto(0 + sample.id | 1, relate_mat_plum_repro_f),
                             data = snps_plum_repro_f_df,
@@ -232,15 +160,15 @@
                             family = nbinom1)
       
     ## b) model diagnostics
-      performance::check_overdispersion(snps_sum_pred_plum_repro_zinf_nb1_f_mod) 
-      performance::check_zeroinflation(snps_sum_pred_plum_repro_zinf_nb1_f_mod)
+      performance::check_overdispersion(snps_pred_plum_repro_zinf_nb1_f_mod) 
+      performance::check_zeroinflation(snps_pred_plum_repro_zinf_nb1_f_mod)
     
     ## c) model summary
-      summary(snps_sum_pred_plum_repro_zinf_nb1_f_mod)
+      summary(snps_pred_plum_repro_zinf_nb1_f_mod)
       
     ## d) tidy effect estimates
-      snps_sum_pred_plum_repro_zinf_nb1_f_tidy <- 
-        tidy(snps_sum_pred_plum_repro_zinf_nb1_f_mod, 
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        tidy(snps_pred_plum_repro_zinf_nb1_f_mod, 
              effects = 'fixed',
              conf.int = T,
              conf.method = 'Wald',
@@ -251,36 +179,35 @@
                  'statistic', 'p.value'))  
       
     ## e) label model
-      snps_sum_pred_plum_repro_zinf_nb1_f_tidy$model <-
-        c('SNP dosage instrument - female')
+      snps_pred_plum_repro_zinf_nb1_f_tidy$model <-
+        c('SNPs instrument - female')
       
-    ## f) tidy snps_sum_pred_plum_repro_zinf_nb1_f_tidy by making a new 
+    ## f) tidy snps_pred_plum_repro_zinf_nb1_f_tidy by making a new 
         # column '95% CI'
-      snps_sum_pred_plum_repro_zinf_nb1_f_tidy$'95% CI' = 
-        paste(round(snps_sum_pred_plum_repro_zinf_nb1_f_tidy$conf.low, 3),
-              round(snps_sum_pred_plum_repro_zinf_nb1_f_tidy$conf.high, 3), 
+      snps_pred_plum_repro_zinf_nb1_f_tidy$'95% CI' = 
+        paste(round(snps_pred_plum_repro_zinf_nb1_f_tidy$conf.low, 3),
+              round(snps_pred_plum_repro_zinf_nb1_f_tidy$conf.high, 3), 
               sep=", ")
       
-    ## g) tidy snps_sum_pred_plum_repro_zinf_nb1_f_tidy by removing extra 
+    ## g) tidy snps_pred_plum_repro_zinf_nb1_f_tidy by removing extra 
         # columns and rows
-      snps_sum_pred_plum_repro_zinf_nb1_f_tidy <- 
-        snps_sum_pred_plum_repro_zinf_nb1_f_tidy %>%
-        rename(c(`β` = `estimate`, `P-value` = `p.value`)) %>%
-        select(c(`β`, `95% CI`, `P-value`, `model`))
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        snps_pred_plum_repro_zinf_nb1_f_tidy %>%
+        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
+                 `P-value` = `p.value`)) %>%
+        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
       
     ## h) move 'model' to first column
-      snps_sum_pred_plum_repro_zinf_nb1_f_tidy <- 
-        snps_sum_pred_plum_repro_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `β`) 
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        snps_pred_plum_repro_zinf_nb1_f_tidy %>%
+        relocate(model, .before = `Rate Ratio (exponentiated)`) 
     
       
-  ### 5.2 SNP dosage predicted breast brightness on reproduction - male models
+  ### 5.2 SNPs predicted breast brightness on reproduction - male models
     ## a) glmmTMB model for effect of predicted breast brightness on the 
       # number of nestlings fledged from nest attempts 1 and 2
-      snps_sum_pred_plum_repro_zinf_nb1_m_mod <-  glmmTMB(tot.repro ~ 
-                         #snps.plum.pred.val +
-                          snps.sum.plum.pred.val +
-                          #pgs.plum.pred.val +
+      snps_pred_plum_repro_zinf_nb1_m_mod <-  glmmTMB(ep.repro ~ 
+                          scale(snps.plum.pred.val) +
                           # proportional covariance matrix based on relatedness
                           propto(0 + sample.id | 1, relate_mat_plum_repro_m),
                           data = snps_plum_repro_m_df,
@@ -288,15 +215,15 @@
                           family = nbinom1)
       
     ## b) model diagnostics
-      performance::check_overdispersion(snps_sum_pred_plum_repro_zinf_nb1_m_mod) 
-      performance::check_zeroinflation(snps_sum_pred_plum_repro_zinf_nb1_m_mod)
+      performance::check_overdispersion(snps_pred_plum_repro_zinf_nb1_m_mod) 
+      performance::check_zeroinflation(snps_pred_plum_repro_zinf_nb1_m_mod)
       
     ## c) model summary
-      summary(snps_sum_pred_plum_repro_zinf_nb1_m_mod)
+      summary(snps_pred_plum_repro_zinf_nb1_m_mod)
       
     ## d) tidy effect estimates
-      snps_sum_pred_plum_repro_zinf_nb1_m_tidy <- 
-        tidy(snps_sum_pred_plum_repro_zinf_nb1_m_mod, 
+      snps_pred_plum_repro_zinf_nb1_m_tidy <- 
+        tidy(snps_pred_plum_repro_zinf_nb1_m_mod, 
              effects = 'fixed',
              conf.int = T,
              conf.method = 'Wald',
@@ -307,34 +234,35 @@
                  'statistic', 'p.value'))  
       
     ## e) label model
-      snps_sum_pred_plum_repro_zinf_nb1_m_tidy$model <-
-        c('SNP dosage instrument - male')
+      snps_pred_plum_repro_zinf_nb1_m_tidy$model <-
+        c('SNPs instrument - male')
     
-    ## f) tidy snps_sum_pred_plum_repro_zinf_nb1_m_tidy by making a new 
+    ## f) tidy snps_pred_plum_repro_zinf_nb1_m_tidy by making a new 
         # column '95% CI'
-      snps_sum_pred_plum_repro_zinf_nb1_m_tidy$'95% CI' = 
-        paste(round(snps_sum_pred_plum_repro_zinf_nb1_m_tidy$conf.low, 3),
-              round(snps_sum_pred_plum_repro_zinf_nb1_m_tidy$conf.high, 3), 
+      snps_pred_plum_repro_zinf_nb1_m_tidy$'95% CI' = 
+        paste(round(snps_pred_plum_repro_zinf_nb1_m_tidy$conf.low, 3),
+              round(snps_pred_plum_repro_zinf_nb1_m_tidy$conf.high, 3), 
               sep=", ")
       
-    ## g) tidy snps_sum_pred_plum_repro_zinf_nb1_m_tidy by removing extra 
+    ## g) tidy snps_pred_plum_repro_zinf_nb1_m_tidy by removing extra 
         # columns and rows
-      snps_sum_pred_plum_repro_zinf_nb1_m_tidy <- 
-        snps_sum_pred_plum_repro_zinf_nb1_m_tidy %>%
-        rename(c(`β` = `estimate`, `P-value` = `p.value`)) %>%
-        select(c(`β`, `95% CI`, `P-value`, `model`))
+      snps_pred_plum_repro_zinf_nb1_m_tidy <- 
+        snps_pred_plum_repro_zinf_nb1_m_tidy %>%
+        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
+                 `P-value` = `p.value`)) %>%
+        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
       
     ## h) move 'model' to first column
-      snps_sum_pred_plum_repro_zinf_nb1_m_tidy <- 
-        snps_sum_pred_plum_repro_zinf_nb1_m_tidy %>%
-        relocate(model, .before = `β`) 
+      snps_pred_plum_repro_zinf_nb1_m_tidy <- 
+        snps_pred_plum_repro_zinf_nb1_m_tidy %>%
+        relocate(model, .before = `Rate Ratio (exponentiated)`) 
     
       
   ### 5.3 PGS predicted breast brightness on reproduction - female models
     ## a) glmmTMB model for effect of predicted breast brightness on the 
       # number of nestlings fledged from nest attempts 1 and 2
-      pgs_pred_plum_repro_zinf_nb1_f_mod <-  glmmTMB(tot.repro ~ 
-                            pgs.plum.pred.val +
+      pgs_pred_plum_repro_zinf_nb1_f_mod <-  glmmTMB(sum.fecundity ~ 
+                            scale(pgs.plum.pred.val) +
                         # proportional covariance matrix based on relatedness
                             propto(0 + sample.id | 1, relate_mat_plum_repro_f),
                             data = snps_plum_repro_f_df,
@@ -375,20 +303,21 @@
       # columns and rows
       pgs_pred_plum_repro_zinf_nb1_f_tidy <- 
         pgs_pred_plum_repro_zinf_nb1_f_tidy %>%
-        rename(c(`β` = `estimate`, `P-value` = `p.value`)) %>%
-        select(c(`β`, `95% CI`, `P-value`, `model`))
+        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
+                 `P-value` = `p.value`)) %>%
+        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
       
     ## h) move 'model' to first column
       pgs_pred_plum_repro_zinf_nb1_f_tidy <- 
         pgs_pred_plum_repro_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `β`) 
+        relocate(model, .before = `Rate Ratio (exponentiated)`) 
       
       
   ### 5.4 PGS predicted breast brightness on reproduction - male models
     ## a) glmmTMB model for effect of predicted breast brightness on the 
       # number of nestlings fledged from nest attempts 1 and 2
-      pgs_pred_plum_repro_zinf_nb1_m_mod <-  glmmTMB(tot.repro ~ 
-                            pgs.plum.pred.val +
+      pgs_pred_plum_repro_zinf_nb1_m_mod <-  glmmTMB(ep.repro ~ 
+                            scale(pgs.plum.pred.val) +
                           # proportional covariance matrix based on relatedness
                             propto(0 + sample.id | 1, relate_mat_plum_repro_m),
                             data = snps_plum_repro_m_df,
@@ -429,21 +358,22 @@
       # columns and rows
       pgs_pred_plum_repro_zinf_nb1_m_tidy <- 
         pgs_pred_plum_repro_zinf_nb1_m_tidy %>%
-        rename(c(`β` = `estimate`, `P-value` = `p.value`)) %>%
-        select(c(`β`, `95% CI`, `P-value`, `model`))
+        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
+                 `P-value` = `p.value`)) %>%
+        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
       
     ## h) move 'model' to first column
       pgs_pred_plum_repro_zinf_nb1_m_tidy <- 
         pgs_pred_plum_repro_zinf_nb1_m_tidy %>%
-        relocate(model, .before = `β`)    
+        relocate(model, .before = `Rate Ratio (exponentiated)`)    
       
 
   ### 5.5 Make formatted tables of the associations between the instrument
         # breast brightness
     # a) Combine Step 2: Female regression estimates into a tidy table
       trait_tot_repro_smmry <- 
-        bind_rows(snps_sum_pred_plum_repro_zinf_nb1_f_tidy,
-                  snps_sum_pred_plum_repro_zinf_nb1_m_tidy,
+        bind_rows(snps_pred_plum_repro_zinf_nb1_f_tidy,
+                  snps_pred_plum_repro_zinf_nb1_m_tidy,
                   pgs_pred_plum_repro_zinf_nb1_f_tidy,
                   pgs_pred_plum_repro_zinf_nb1_m_tidy)
       
@@ -462,10 +392,10 @@
       
 
 ###############################################################################
-##############    6. Step 2: Male fit values on reproduction     ##############
+##############    6. Results visualisation    ##############
 ###############################################################################         
 
-  ### 6.1 KITLG predicted breast brightness on reproduction - male models
+  ### 6.1 graphs
     
 
 ###############################################################################

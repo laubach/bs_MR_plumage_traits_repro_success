@@ -7,7 +7,7 @@
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############              last updated: 10 May 2026               #############
+#############              last updated: 12 May 2026               #############
 ################################################################################
 
 
@@ -62,6 +62,11 @@
       # load MuMIn
         library('MuMIn')
       
+      # load partR2 package 
+        # library('partR2')
+        library('r2glmm')
+        library('car')
+      
     ## c) Graphing/visualization packages        
       # load ggplot2 package
         library('ggplot2')
@@ -80,7 +85,7 @@
         library ('flextable')  
       
       # load broom package
-        #library ('broom')
+        library ('broom')
       
       # load broom.mixed package 
         library ('broom.mixed')
@@ -240,8 +245,7 @@
                  'statistic', 'p.value'))
       # NOTE: significant snps: 
         #kitlg.44277058 
-      
-      
+
       
   ### 3.3 Assess PLXNC1 snp associations with breast brightness
     ## a) make a list of snp names from PLXNC1
@@ -414,8 +418,8 @@
       # NOTE: NO significant snps:
       
       
-  ### 3.8 Assess if multiple snps from the same candidate region have 
-        # independent effect of plumage (where snp p < 0.1)
+  ### 3.8 Assess which snps from the same candidate region are the best
+        # predictors  of plumage (where snp p < 0.1)
     ## a) glmmTMB model for effect of PLXNC1 snps on breast brightness
       # sexm:plxnc1.46525798
       # sexm:plxnc1.46521842
@@ -446,12 +450,12 @@
       # NOTE: model with single snp plxnc1.46524855 is best fit based on AICc
             # no other model has AICc < 1
       
-    ## d) check if other snps independently predict breast brightness
-      summary(plxnc1_all_plum_mods)
-      # NOTE: snps that independently predict breast brightness:
-        # plxnc1.465205432
-        # sexm:plxnc1.46521842
-  
+    # ## d) check if other snps independently predict breast brightness
+    #   summary(plxnc1_all_plum_mods)
+    #   # NOTE: snps that independently predict breast brightness:
+    #     # plxnc1.465205432
+    #     # sexm:plxnc1.46521842
+    # 
     ## e) glmmTMB model for effect of ROR2 snps on breast brightness
         # ror2.44206228
         # ror2.44196487
@@ -470,12 +474,13 @@
     ## c) view the top models
       head(ror2_aic_models)
       # note model with both snps ror2.44206228 and ror2.44196487 is 
-      # among the best fit based on AICc - difference in AICc < 1
+      # among the best fit based on AICc - difference in AICc < 1; these
+      # snps together do not improve model fit, so pick ror2.44206228
     
-    ## d) check if snps indendently predict breast brightness
-      summary(ror2_all_plum_mods)
-      # NOTE: both snps independently predict breast brightens, so pick 
-            # top model with both snps and based on AICc
+    # ## d) check if snps indendently predict breast brightness
+    #   summary(ror2_all_plum_mods)
+    #   # NOTE: both snps independently predict breast brightens, so pick 
+    #         # top model with both snps and based on AICc
       
     
       
@@ -500,10 +505,7 @@
       snps_plum_pred_mod <-  glmmTMB(breast.avg.bright ~ 
                                 kitlg.44277058
                               + plxnc1.46524855
-                              + plxnc1.46520543
-                              + plxnc1.46521842 * sex 
                               + ror2.44206228
-                              + ror2.44196487
                                + sex +
                         # proportional covariance matrix based on relatedness
                                propto(0 + sample.id | 1, relate_mat_plum_snps),
@@ -513,192 +515,166 @@
     ## b) model summary  
       summary(snps_plum_pred_mod)
       
-    ## c) tidy effect estimates
-      snps_plum_pred_mod_tidy <- 
-        tidy(snps_plum_pred_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = F) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', 'std.error', 'conf.low', 'conf.high', 
-                 'statistic', 'p.value'))  
       
-    ## d) label model
-      # snps_plum_mod_tidy$model <- 
-      #   c('KITLG')  
+    ## c) run a reduced model with no snps
+      snps_plum_pred_reduced_mod <-  glmmTMB(breast.avg.bright ~ 
+                              sex +
+                          # proportional covariance matrix based on relatedness
+                              propto(0 + sample.id | 1, relate_mat_plum_snps),
+                              data = snps_plum_repro_df,
+                                family = gaussian)
       
-    ## e) Get fitted values (response scale)
+    ## d) use stats::anova to compare full and reduced model  
+      snps_mod_comparison <- tibble::tibble(anova(snps_plum_pred_mod, 
+                                                  snps_plum_pred_reduced_mod))
+      
+    # ## e) calculate the approximate F-statistics (chisq / chi DF)
+    #   snps_mod_comparison$`F-stat` <- snps_mod_comparison$Chisq / 
+    #     snps_mod_comparison$`Chi Df`
+      
+     ## f) add model variable
+      snps_mod_comparison$model <-  c('')
+      
+    ## g) move 'model' to first column
+      snps_mod_comparison <- snps_mod_comparison %>%
+        relocate(model, .before = `Df`) 
+      
+    ## h) update values to indicate model
+      snps_mod_comparison[1,1] <- 'reduced SNPs model'
+      snps_mod_comparison[2,1] <- 'full SNPs model'
+
+      
+    ## i) Get fitted values (response scale)
       #snps_plum_pred_val <- fitted.values(snps_plum_pred_mod)
       snps_plum_pred_val <- predict(snps_plum_pred_mod, 
                                            type = "response")
       
-    ## f) Combine fitted values with original data
+    ## j) Combine fitted values with original data
       snps_plum_repro_df$snps.plum.pred.val <- snps_plum_pred_val
       
       
   ### 4.2 Create genetic instrument index variables
     ## a) transform snps to numeric 
       snps_plum_repro_df <- snps_plum_repro_df %>%
-        mutate(across(c(kitlg.44277058, plxnc1.46524855, plxnc1.46520543,
-                        plxnc1.46521842, ror2.44206228, ror2.44196487), 
+        mutate(across(c(kitlg.44277058, plxnc1.46524855, ror2.44206228), 
                       as.numeric))
   
-    ## b) Use allele dosages to calculate an breast plumage brightness 
-      # instrument based on the imputed snps that were externally identified 
-      # in hybrid GWAS from Schield et al 2024
-      snps_plum_repro_df <- snps_plum_repro_df  %>%
-        rowwise() %>%
-        mutate(snps.sum.breast = sum(c_across(c(kitlg.44277058, 
-                                      plxnc1.46524855, plxnc1.46520543,
-                                      plxnc1.46521842, ror2.44206228, 
-                                      ror2.44196487)))) %>%
-        ungroup()
-      
-    ## c) Use imputed allele dosages and effect sizes from (Schield et al 2024)
+    ## b) Use imputed allele dosages and effect sizes from (Schield et al 2024)
       # to calculate a polygenic score (PGS) for breast plumage snps
       # PGS = sum(beta1*dosage1 + beta2*dosage2 ...) where beta is a 
       # population level estimate, and dosage is a vector for each individual
       
       # kitlg.44277058 beta = -2.99372967
-      # plxnc1.46524855 beta = -2.13646641
-      # plxnc1.46520543 beta = -2.13646641
-      # plxnc1.46521842 beta = -0.88620883
+      # plxnc1.46524855 beta = -3.1331515
       # ror2.44206228 beta = -3.5401068
-      # ror2.44196487 beta = -3.3972115        
 
       # constants
-      betas <- c(-2.99372967, -2.13646641, -2.13646641, -0.88620883, 
-                 -3.5401068, -3.3972115)
+      betas <- c(-2.99372967, -3.1331515, -3.5401068)
       
       snps_plum_repro_df <- snps_plum_repro_df  %>%
         rowwise() %>%
         mutate(pgs.breast = sum(c_across(c(c(kitlg.44277058, 
-                                             plxnc1.46524855, plxnc1.46520543,
-                                             plxnc1.46521842, ror2.44206228, 
-                                             ror2.44196487))) * betas)) %>%
+                                             plxnc1.46524855, ror2.44206228))) 
+                                * betas)) %>%
         ungroup()
-      
-     
-  ### 4.3 KITLG, PLXNC1, and ROR2 snps sum dosage index effects on 
-        # breast brightness 
-    ## a) glmmTMB model for effect of KITLG, PLXNC1 and ROR2 sum index on 
-        # breast brightness
-      snps_sum_plum_pred_mod <-  glmmTMB(breast.avg.bright ~ 
-                              snps.sum.breast
-                              + sex +
-                        # proportional covariance matrix based on relatedness
-                              propto(0 + sample.id | 1, relate_mat_plum_snps),
-                              data = snps_plum_repro_df,
-                                  family = gaussian)
-      
-    ## b) model summary  
-      summary(snps_sum_plum_pred_mod)
-      
-    ## c) tidy effect estimates
-      snps_sum_plum_pred_mod_tidy <- 
-        tidy(snps_sum_plum_pred_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = F) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## d) label model
-      snps_sum_plum_pred_mod_tidy$model <-
-        c('SNP dosage index')
-      
-    ## e) tidy snps_sum_plum_pred_mod_tidy by making a new column '95% CI'
-      snps_sum_plum_pred_mod_tidy$'95% CI' = 
-        paste(round(snps_sum_plum_pred_mod_tidy$conf.low, 3),
-              round(snps_sum_plum_pred_mod_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## f) tidy snps_sum_plum_pred_mod_tidy by removing extra columns and rows
-      snps_sum_plum_pred_mod_tidy <- snps_sum_plum_pred_mod_tidy %>%
-        rename(c(`β` = `estimate`, `P-value` = `p.value`)) %>%
-        select(c(`β`, `95% CI`, `P-value`, `model`))
-               
-    ## g) move 'model' to first column
-      snps_sum_plum_pred_mod_tidy <- snps_sum_plum_pred_mod_tidy %>%
-                 relocate(model, .before = `β`) 
-      
-    ## h) Get fitted values (response scale)
-      snps_sum_plum_pred_val <- predict(snps_sum_plum_pred_mod, 
-                                        type = "response")
-
-    ## i) Combine fitted values with original data
-      snps_plum_repro_df$snps.sum.plum.pred.val <- snps_sum_plum_pred_val
-      
+    
       
   ### 4.4 KITLG, PLXNC1, and ROR2 snps PGS index effects on breast brightness 
     ## a) glmmTMB model for effect of KITLG, PLXNC1 and ROR2 PGS on breast brightness
       pgs_plum_pred_mod <-  glmmTMB(breast.avg.bright ~ 
-                              pgs.breast
-                              + sex +
+                              pgs.breast +
+                              sex +
                          # proportional covariance matrix based on relatedness
                               propto(0 + sample.id | 1, relate_mat_plum_snps),
                               data = snps_plum_repro_df,
                                   family = gaussian)
       
+      
     ## b) model summary  
       summary(pgs_plum_pred_mod)
       
-    ## c) tidy effect estimates
-      pgs_plum_pred_mod_tidy <- 
-        tidy(pgs_plum_pred_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = F) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
+    ## c) run a reduced model with no snps 
+      pgs_plum_pred_reduced_mod <-  glmmTMB(breast.avg.bright ~ 
+                                      sex +
+                                      # proportional covariance matrix based on relatedness
+                                      propto(0 + sample.id | 1, relate_mat_plum_snps),
+                                    data = snps_plum_repro_df,
+                                    family = gaussian)
       
-    ## d) label model
-      pgs_plum_pred_mod_tidy$model <-
-        c('polygenic score (PGS)')
+    ## d) use stats::anova to compare full and reduced model  
+      pgs_mod_comparison <- tibble::tibble(anova(pgs_plum_pred_mod, 
+                                                 pgs_plum_pred_reduced_mod))
       
-    ## e) tidy pgs_plum_pred_mod_tidy by making a new column '95% CI'
-      pgs_plum_pred_mod_tidy$'95% CI' = 
-        paste(round(pgs_plum_pred_mod_tidy$conf.low, 3),
-              round(pgs_plum_pred_mod_tidy$conf.high, 3), 
-              sep=", ")
+    # ## e) calculate the approximate F-statistics (chisq / chi DF)
+    #   pgs_mod_comparison$`F-stat` <- pgs_mod_comparison$Chisq / 
+    #     pgs_mod_comparison$`Chi Df`
       
-    ## f) tidy pgs_plum_pred_mod_tidy by removing extra columns and rows
-      pgs_plum_pred_mod_tidy <- pgs_plum_pred_mod_tidy %>%
-        rename(c(`β` = `estimate`, `P-value` = `p.value`)) %>%
-        select(c(`β`, `95% CI`, `P-value`, `model`))
+    ## f) add model variable
+      pgs_mod_comparison$model <-  c('')
       
     ## g) move 'model' to first column
-      pgs_plum_pred_mod_tidy <- pgs_plum_pred_mod_tidy %>%
-        relocate(model, .before = `β`) 
+      pgs_mod_comparison <- pgs_mod_comparison %>%
+        relocate(model, .before = `Df`) 
       
+    ## h) update values to indicate model
+      pgs_mod_comparison[1,1] <- 'reduced PGS model'
+      pgs_mod_comparison[2,1] <- 'full PGS model'
       
-    ## h) Get fitted values (response scale)
+    ## i) Get fitted values (response scale)
       pgs_plum_pred_val <- predict(pgs_plum_pred_mod, 
-                                        type = "response")
+                                   type = "response")
       
-    ## i) Combine fitted values with original data
+    ## j) Combine fitted values with original data
       snps_plum_repro_df$pgs.plum.pred.val <- pgs_plum_pred_val
       
+      
+    #' ## c) tidy effect estimates
+    #'   pgs_plum_pred_mod_tidy <- 
+    #'     tidy(pgs_plum_pred_mod, 
+    #'          effects = 'fixed',
+    #'          conf.int = T,
+    #'          conf.method = 'Wald',
+    #'          conf.level = 0.95, 
+    #'          exponentiate = F) %>%
+    #'     filter(!(term == '(Intercept)'| term == 'sexm')) %>%
+    #'     select(c('term', 'estimate', #'std.error', 
+    #'              'conf.low', 'conf.high', 
+    #'              #'statistic', 
+    #'              'p.value'))  
+    #'   
+    #' ## d) label model
+    #'   pgs_plum_pred_mod_tidy$model <-
+    #'     c('polygenic score (PGS)')
+    #'   
+    #' ## e) tidy pgs_plum_pred_mod_tidy by making a new column '95% CI'
+    #'   pgs_plum_pred_mod_tidy$'95% CI' = 
+    #'     paste(round(pgs_plum_pred_mod_tidy$conf.low, 3),
+    #'           round(pgs_plum_pred_mod_tidy$conf.high, 3), 
+    #'           sep=", ")
+    #'   
+    #' ## f) tidy pgs_plum_pred_mod_tidy by removing extra columns and rows
+    #'   pgs_plum_pred_mod_tidy <- pgs_plum_pred_mod_tidy %>%
+    #'     rename(c(`β` = `estimate`, `P-value` = `p.value`)) %>%
+    #'     select(c(`β`, `95% CI`, `P-value`, `model`))
+    #'   
+    #' ## g) move 'model' to first column
+    #'   pgs_plum_pred_mod_tidy <- pgs_plum_pred_mod_tidy %>%
+    #'     relocate(model, .before = `β`) 
+
   
   ### 4.5 Make formatted tables of the associations between the instrument
         # breast brightness
-    ## a) row bind snps_sum_plum_pred_mod_tidy and pgs_plum_pred_mod_tidy,
-      instrument_mod_sum <- bind_rows(snps_sum_plum_pred_mod_tidy, 
-                                   pgs_plum_pred_mod_tidy) 
+    ## a) row bind snps_mod_comparison and pgs_mod_comparison,
+      instrument_mod_sum <- bind_rows(snps_mod_comparison, 
+                                      pgs_mod_comparison) 
       
-    ## b) format table creating flextable object 
+    ## b) tidy instrument_mod_sum
+      instrument_mod_sum <- instrument_mod_sum %>%
+        rename(c('P' = 'Pr(>Chisq)')) %>%
+        select(c(`model`, `Df`, `AIC`, `logLik`,`Chisq`, `Chi Df`, `P`, 
+                 `F-stat`))
+
+    ## c) format table creating flextable object 
       instrument_mod_sum_frmt <- nice_table(instrument_mod_sum, 
                                          separate.header = T)
       
@@ -709,11 +685,68 @@
       flextable::save_as_docx(instrument_mod_sum_frmt, 
                         path = here('output/instrument_mod_sum_frmt.docx'))  
       
+  ### 4.6 Sensitivity for weak instrument bias
+    #   
+    # pgs_Rs <- performance::r2(pgs_plum_pred_mod)
+    # performance::r2(snps_sum_plum_pred_mod)
+    # snps_sum_plum_pred_mod
+    # pgs_Rs$Conditional_R2
+    # 
+    # partR2_res <- partR2(pgs_plum_pred_mod, partvars = c("x1"), 
+    #                      data = df, nboot = 100)
+    # results <- partR2(pgs_plum_pred_mod, partvars = c('pgs.breast'), 
+    #                   data = snps_plum_repro_df, nboot = 100)
+    # 
+    # res <- partR2(pgs_plum_pred_mod, data = snps_plum_repro_df, 
+    #               R2_type = "marginal")
+    # 
+    # r2beta(pgs_plum_pred_mod, method = 'nsj', partial = TRUE)
+    # print(results)
+    # 
+    #   (R^2snps/(1-R^2snps)) * ((N-1-k)/k)
+    #   F <- (0.0073/(1-0.0073)) * ((258-1-6)/6)
+    #   
+    #   r2beta(pgs_plum_pred_mod, method = 'sgv', partial = TRUE)
+    #   
+    #   
+    #   pgs_plum_pred_reduce <-  glmmTMB(breast.avg.bright ~ 
+    #                                   sex +
+    #                                   # proportional covariance matrix based on relatedness
+    #                                   propto(0 + sample.id | 1, relate_mat_plum_snps),
+    #                                 data = snps_plum_repro_df,
+    #                                 family = gaussian)
+    #   
+    #   ## b) model summary  
+    #   summary(pgs_plum_pred_reduce)
+    #   
+      # sse_full <- sigma(pgs_plum_pred_mod)
+      # sse_reduced <- sigma(pgs_plum_pred_reduce)
+      # partial.r.sq <- (sse_reduced - sse_full)/sse_reduced
+      # 
+      # https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1011391
+      # 
+      # f = ((sse_reduced - sse_full) / 1) /((sse_full/(258- 2 -1)))
+      # 
+      # 
+      # car::Anova(pgs_plum_pred_mod, type = "III", test.statistic = "F")
+      # model <- glmmTMB(count ~ spp + mined + (1|site), data = Salamanders)
+      # # Calculate Type III Wald F-statistics
+      # Anova(model, type = "III", test.statistic = "F")
+      # 
+      # anova(model, test.statistic = "F")
+      # 
+      # glmmTMB:::Anova.glmmTMB(
+      #   pgs_plum_pred_mod,
+      #   type = c("II", "III", 2, 3),
+      #   test.statistic = c("F"),
+      #   component = "cond",
+      #   vcov. = vcov(pgs_plum_pred_mod)[[component]]
+      # )
       
   ### 4.6 Tidy predicted breast brightness values from Step 1 for use in Step 2
     ## a) select the predicted values
       snps_pred_plum_repro_df <- snps_plum_repro_df %>%
-        select(c(sample.id, snps.plum.pred.val, snps.sum.plum.pred.val,
+        select(c(sample.id, snps.plum.pred.val,
                  pgs.plum.pred.val))
     
     ## b) Left join the predicted values for breast plumage brightness
