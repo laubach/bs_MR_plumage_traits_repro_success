@@ -4,8 +4,9 @@
 
 ## Genomics pipeline
 
-Summary...
-Lists and reference files can be found in various analysis directories, as can Shell and Python scripts used in elements of the analysis workflow. R scripts are in the R directory. Note that you may need to adjust the organization of path/file locations to suit your environment. This workflow assumes that you return to the main working directory ~/hirundo_speciation_genomics after completing major analysis sections. Adjust the path before the main working directory as necessary. Walkthrough of software installations will take place in ~/hirundo_speciation_genomics/tmp/.
+This repository and associated ReadMe summarize the bioinformatics pipeline for the Mendelian randomization analysis used to assess if barn swallow plumage traits cause differences in reproductive success. Whole genome sequencing data are permanently archived on GenBank (PRJNA323498). All statistical analyses are performed in R, and the data, code and results for those analyses are in 'data', 'scripts', and 'output' subdirectories, respectively. 
+
+For the bioinformatics pipeline, lists and reference files can be found in various analysis directories, as can Shell and Python scripts used in elements of the analysis workflow. Note that you may need to adjust the organization of path/file locations to suit your environment. This workflow assumes that you return to the main working directory ~/hirundo_plumage_MR/ after completing major analysis sections. Adjust the path before the main working directory as necessary. 
 
 ## Contents
 
@@ -19,7 +20,7 @@ Lists and reference files can be found in various analysis directories, as can S
 8. [Filtering for imputation](#filtering-for-imputation)
 9. [Process sex chromosomes for imputation](#process-sex-chromosomes-for-imputation)
 10. [Repeat masking for imputation](#repeat-masking-for-imputation)
-11. [Additional processing and filtering for imputation](#additional-processing- and-filtering-for-imputation)
+11. [Additional processing and filtering for imputation](#additional-processing-and-filtering-for-imputation)
 12. [Impute and call genotypes](#impute-and-call-genotypes)
 
 
@@ -27,6 +28,23 @@ Lists and reference files can be found in various analysis directories, as can S
 ## 1. Software and dependencies
 
 The software and their dependencies used in this genomics pipleine are listed here and assumed to be on the user path.
+The analysis sections below use the following software and dependencies and assume they are on the user path unless otherwise specified:
+
+* [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic)
+* [bwa](http://bio-bwa.sourceforge.net/)
+* [htslib](http://www.htslib.org/)
+* [Samtools](http://www.htslib.org/)
+* [bgzip](http://www.htslib.org/)
+* [tabix](http://www.htslib.org/)
+* [GATK](https://gatk.broadinstitute.org/hc/en-us)
+* [Picard](https://broadinstitute.github.io/picard/)
+* [bcftools](http://www.htslib.org/)
+* [vcftools](https://vcftools.github.io/index.html)
+* [bedtools](https://bedtools.readthedocs.io/en/latest/)
+* [GEMMA](https://github.com/genetics-statistics/GEMMA)
+* [Beagle](https://faculty.washington.edu/browning/beagle/beagle.html)
+* [Repeatmasker](https://www.repeatmasker.org/)
+
 
 wget -O picard.jar "https://github.com/broadinstitute/picard/releases/download/2.8.1/picard.jar"
 
@@ -496,7 +514,7 @@ tabix -p vcf ./vcf/hirundo_rustica.final.chrW.vcf.gz
 
 ## 10. Repeat masking for imputation
 
-We want to avoid analyzing genotypes in repetitive regions of the genome. We'll generate a repeat annotation for filtering using `repeatmasker`. The steps to annotate repeats using RepeatMaster are detailed in the Schield et al 2025.
+We want to avoid analyzing genotypes in repetitive regions of the genome. We'll generate a repeat annotation for filtering using `repeatmasker`. The steps to annotate repeats using RepeatMaster are detailed in the Schield et al 2024.
 
 ### 10.1. Index repeat BED file.
 
@@ -766,29 +784,6 @@ scp zchlaubach@Terminator:/data2/hirundo_plumage_MR/vcf_imputed/hirundo_rustica.
 
 
 
-
-Maybe don't need to do this....
-
-### 12.4 Extract VCFs and convert to Plink format
-```
-bcftools view --threads 16 -S ./phenotype_lists/list.hybrid.plum -O v ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.ingroup.impute.vcf.gz | bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.05' -O z -o ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.hybrid_all.impute.plum.vcf.gz
-
-
-bcftools view --threads 16 -S ./phenotype_lists/list.hybrid.tail -O v ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.ingroup.impute.vcf.gz | bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.05' -O z -o ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.hybrid_all.impute.tail.vcf.gz
-bcftools view --threads 16 -S ./phenotype_lists/list.full.plum -O v ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.ingroup.impute.vcf.gz | bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.05' -O z -o ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.ingroup.impute.plum.vcf.gz
-bcftools view --threads 16 -S ./phenotype_lists/list.full.tail -O v ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.ingroup.impute.vcf.gz | bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.05' -O z -o ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.ingroup.impute.tail.vcf.gz
-bcftools view --threads 16 -S ./phenotype_lists/list.male.plum -O v ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.male.impute.vcf.gz | bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.05' -O z -o ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.male.impute.plum.vcf.gz
-bcftools view --threads 16 -S ./phenotype_lists/list.male.tail -O v ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.male.impute.vcf.gz | bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.05' -O z -o ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.male.impute.tail.vcf.gz
-bcftools view --threads 16 -S ./phenotype_lists/list.female.plum -O v ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ+chrW.snps.miss02.maf05.female.impute.vcf.gz | bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.05' -O z -o ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ+chrW.snps.miss02.maf05.female.impute.plum.vcf.gz
-bcftools view --threads 16 -S ./phenotype_lists/list.female.tail -O v ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ+chrW.snps.miss02.maf05.female.impute.vcf.gz | bcftools filter -e 'F_MISSING > 0.2 || MAF <= 0.05' -O z -o ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ+chrW.snps.miss02.maf05.female.impute.tail.vcf.gz
-plink --vcf ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.hybrid_all.impute.plum.vcf.gz --make-bed --out ./input/gwas.hybrid.plum --allow-extra-chr
-plink --vcf ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.hybrid_all.impute.tail.vcf.gz --make-bed --out ./input/gwas.hybrid.tail --allow-extra-chr
-plink --vcf ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.ingroup.impute.plum.vcf.gz --make-bed --out ./input/gwas.full.plum --allow-extra-chr
-plink --vcf ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.ingroup.impute.tail.vcf.gz --make-bed --out ./input/gwas.full.tail --allow-extra-chr
-plink --vcf ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.male.impute.plum.vcf.gz --make-bed --out ./input/gwas.male.plum --allow-extra-chr
-plink --vcf ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ.snps.miss02.maf05.male.impute.tail.vcf.gz --make-bed --out ./input/gwas.male.tail --allow-extra-chr
-plink --vcf ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ+chrW.snps.miss02.maf05.female.impute.plum.vcf.gz --make-bed --out ./input/gwas.female.plum --allow-extra-chr
-plink --vcf ./vcf_imputed/hirundo_rustica+smithii.allsites.final.auto+chrZ+chrW.snps.miss02.maf05.female.impute.tail.vcf.gz --make-bed --out ./input/gwas.female.tail --allow-extra-chr
 
 
 

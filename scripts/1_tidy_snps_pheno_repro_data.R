@@ -7,7 +7,7 @@
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############               last updated: 7 May 2026               #############
+#############              last updated: 10 June 2026              #############
 ################################################################################
 
 
@@ -51,9 +51,9 @@
     sessionInfo()
     
     # Developed in:   
-    # R version 4.4.2 (2024-10-31)
+    # R version 4.6.0 (2026-04-24)
     # Platform: x86_64-apple-darwin20
-    # Running under: macOS Sequoia 15.1.
+    # Running under: macOS Tahoe 26.5.1
     
   
   ### 1.4 Set working directory 
@@ -157,7 +157,6 @@
                                                       vent.avg.bright)),
                                              na.rm = TRUE))
       
-
     ## l) coerce non-numeric values to NA for eggs.1, eggs.2, eggs.3 and
         # eggs.4
       pheno_reprod_df <- pheno_reprod_df %>%
@@ -166,25 +165,28 @@
     ## m) create a variable for nest attempts 1&2 fecundity
       pheno_reprod_df <- pheno_reprod_df  %>%
         rowwise()%>%
-        mutate(sum.fecundity = sum(eggs.1, eggs.2,
-                                   #eggs.3, eggs.4,
-                                     na.rm = T))
-      # set male fecudity to NA
+        mutate(sum.fecundity = if_else(is.na(eggs.1) & is.na(eggs.2),
+                                       NA_real_,
+                                       rowSums(across(c(eggs.1, eggs.2)), 
+                                               na.rm = T)))
+                 
+    ## n) set male fecundity to NA
       pheno_reprod_df$sum.fecundity <- ifelse (pheno_reprod_df$sex == 'm', NA, 
                                                pheno_reprod_df$sum.fecundity)
       
-    ## n) coerce non-numeric values to NA for day.12.1, day.12.2, day.12.3,
+    ## o) coerce non-numeric values to NA for day.12.1, day.12.2, day.12.3,
       # and day.12.4 fledgling
       pheno_reprod_df <- pheno_reprod_df %>%
         mutate(across(c(day.12.1, day.12.2, day.12.3, day.12.4), ~as.numeric(.)))
       
-    ## o) create a variable for total fledglings from each adults social pair
+    ## p) create a variable for total fledglings from each adults social pair
         # nest
       pheno_reprod_df <- pheno_reprod_df  %>%
         rowwise()%>%
-        mutate(sum.fledge = sum(day.12.1, day.12.2,
-                                #day.12.3, day.12.4,
-                                     na.rm = T))
+        mutate(sum.fledge = if_else(is.na(day.12.1) & is.na(day.12.2),
+                                    NA_real_,
+                                rowSums(across(c(day.12.1, day.12.2)), 
+                                        na.rm = T)))
       
       
   ### 3.2 Tidy paternity data
@@ -193,102 +195,119 @@
       
     ## b) rename variables
       paternity_df <- paternity_df %>%
-        rename(nest = clutch.id.ind2)
+        rename(`nest` = clutch.id.ind2) %>%
+        rename(`brood` = brood.ind2)
       
-    ## c) simplify fert.type labels
-      paternity_df$fert.type <- gsub("ep.*", "ep", paternity_df$fert.type) 
-      
-    ## d) create a new columns to match sample.id in genomics samples
+    ## c) create a new columns to match sample.id in genomics samples
       paternity_df$mom.id <- gsub(".*-", "CO_", paternity_df$band.mom) 
       paternity_df$dad.id <- gsub(".*-", "CO_", paternity_df$band.dad) 
       
-    ## e) move sample.id to first column position
+    ## d) move sample.id to first column position
       paternity_df <- paternity_df %>% relocate(c(mom.id, dad.id))
       
-    ## f) filter to include just broods 1-2 and exclude eggs collected
-      paternity_df <- paternity_df %>%
-        filter(brood == 1 | brood == 2)
+    # NOTE: data has alread been filter to include just broods 1-2 and 
+      # exclude eggs collected
       
-    ## g) create separate mom data frame
+    ## e) Filter to remove mom CO_57558 from nest 'Hepp (near Cook)'
+      # NOTE: drop female 57558 from analysis since she left her original nest 
+      # and was found only after her 2 nestlings were ~10 days old.
+      paternity_df <- paternity_df %>%
+        filter(site.ind2 != 'Hepp (near Cook)')
+      
+    ## f) create separate mom data frame
       mom_repro_df <- paternity_df %>%
         select(-c(dad.id, band.dad)) %>%
         filter(!is.na(mom.id))
+      
+    ## g) create a list of mom ids
+      mom_id_list <- unique(mom_repro_df$mom.id)
       
     ## h) create separate dad data frame
       dad_repro_df <- paternity_df %>%
         select(-c(mom.id, band.mom)) %>%
         filter(!is.na(dad.id))
       
-    ## i) Calculate female ep reproductive success (sum of her ep and dad_unk 
+    ## i) create a list of dad ids
+      dad_id_list <- unique(dad_repro_df$dad.id)
+      
+    ## j) Calculate female ep reproductive success (sum of her ep and dad_unk 
       # nestlings that survive to ~12 days in broods 1 and 2)
       mom_ep_repro_df <- mom_repro_df%>%
         group_by(mom.id, year) %>%
-        filter(fert.type == 'ep' | fert.type == 'dad_unk') %>%
-        summarise(ep.repro =  sum(fert, na.rm = TRUE)) %>%
+        filter(fert.type == 'ep') %>%
+        summarise(ep.repro = length(fert.type)) %>%
         rename(sample.id = mom.id) %>%
         ungroup()
       
-    ## j) Calculate female reproductive success (sum of her wp and ep nestlings
+    ## k) Calculate female reproductive success (sum of her wp and ep nestlings
       # that survive to ~12 days in broods 1 and 2)   
       mom_repro_df <- mom_repro_df%>%
         group_by(mom.id, year) %>%
-        summarise(tot.repro = sum(fert, na.rm = TRUE)) %>%
+        summarise(tot.repro = length(fert.type)) %>%
         rename(sample.id = mom.id) %>%
         ungroup()
       
-    ## k) left join tot_repro_df to pheno_reprod_df
+    ## l) left join tot_repro_df to pheno_reprod_df
       mom_repro_df <- mom_repro_df  %>%
         left_join(mom_ep_repro_df,
                   by = c('sample.id' = 'sample.id', 'year' = 'year'), 
                   copy = F) 
+    
+    ## m) double check if any moms had neither wp or ep 
+      mom_id_list %in% mom_repro_df$sample.id
+      mom_repro_df$sample.id %in% mom_id_list
       
-    ## l) convert ep.repro that are NA to 0
+    ## n) convert ep.repro that are NA to 0
       mom_repro_df$ep.repro <- ifelse(is.na(mom_repro_df$ep.repro), 0, 
                                       mom_repro_df$ep.repro)
       
-    ## m) Calculate male ep reproductive success (sum of his ep  
+    ## o) Calculate male ep reproductive success (sum of his ep  
       # nestlings that survive to ~12 days in broods 1 and 2)
       dad_ep_repro_df <- dad_repro_df%>%
         group_by(dad.id, year) %>%
         filter(fert.type == 'ep') %>%
-        summarise(ep.repro =  sum(fert, na.rm = TRUE)) %>%
+        summarise(ep.repro = length(fert.type)) %>%
         rename(sample.id = dad.id) %>%
         ungroup()
       
-    ## n) Calculate male reproductive success (sum of her wp and ep nestlings
+    ## p) Calculate male reproductive success (sum of his wp and ep nestlings
       # that survive to ~12 days in broods 1 and 2)
       dad_repro_df <- dad_repro_df%>%
         group_by(dad.id, year) %>%
-        summarise(tot.repro = sum(fert, na.rm = T)) %>%
+        summarise(tot.repro = length(fert.type)) %>%
         rename(sample.id = dad.id) %>%
         ungroup()
       
-    ## o) left join tot_repro_df to pheno_reprod_df
+    ## q) left join tot_repro_df to pheno_reprod_df
       dad_repro_df <- dad_repro_df  %>%
         left_join(dad_ep_repro_df,
                   by = c('sample.id' = 'sample.id', 'year' = 'year'), 
                   copy = F) 
       
-    ## p) convert ep.repro that are NA to 0
+    ## r) double check if any dads had neither wp or ep 
+      dad_id_list %in% dad_repro_df$sample.id
+      dad_repro_df$sample.id %in% dad_id_list
+      
+    ## s) convert ep.repro that are NA to 0
       dad_repro_df$ep.repro <- ifelse(is.na(dad_repro_df$ep.repro), 0, 
                                       dad_repro_df$ep.repro)
       
-    ## q) combine mom_repro_df and dad_repro_df
+    ## t) combine mom_repro_df and dad_repro_df
       tot_repro_df <- rbind(mom_repro_df, dad_repro_df)
       
-    ## r) left join tot_repro_df to pheno_reprod_df
+    ## u) left join tot_repro_df to pheno_reprod_df
       pheno_reprod_df <- pheno_reprod_df  %>%
         left_join(tot_repro_df,
                   by = c('sample.id' = 'sample.id', 'year' = 'year'), 
                   copy = F) 
     
-  # NOTE: distinguish between NA due to 0 fledg vs no paternity data    
-    ## s) fill in ep.repro zero according to sum.fledge
+  # NOTE: distinguish between NA due to 0 fledge vs no paternity data    
+    ## v) fill in ep.repro zero according to sum.fledge
       pheno_reprod_df$ep.repro <- ifelse(
         is.na(pheno_reprod_df$ep.repro) & 
           pheno_reprod_df$sum.fledge == 0, 0, pheno_reprod_df$ep.repro)
       
-    ## t) fill in tot.repro zero according to sum.fledge
+    ## w) fill in tot.repro zero according to sum.fledge
       pheno_reprod_df$tot.repro <- ifelse(
         is.na(pheno_reprod_df$tot.repro) & 
           pheno_reprod_df$sum.fledge == 0, 0, pheno_reprod_df$tot.repro)
@@ -303,45 +322,106 @@
         left_join(snps_df,
                   by = c('sample.id' = 'sample.id'), 
                   copy = F) 
-  
-      
-  ### 3.4 Subset snps_pheno_repro_df for analyses basesd on missing data 
-    ## a) filter samples with no snps data
-      snps_pheno_repro_df <- snps_pheno_repro_df %>%
-        filter(!is.na(kitlg.44277058))  
-      
-      # ## b) filter samples with no reproductive data
-      #   snps_pheno_repro_df <- snps_pheno_repro_df %>%
-      #     filter(!is.na(eggs.1) | !is.na(eggs.2) | !is.na(eggs.3) |
-      #              !is.na(eggs.4))
-      #   
-      # ## c) filter samples with no ventral plumage brightness data
-      #   snps_pheno_repro_df <- snps_pheno_repro_df %>%
-      #     filter(ventral.avg.bright != 'NaN')
-      
-     
 
-  ### 3.5  Basic tidying snps_pheno_repro_df
+
+  ### 3.4  Re-tidying snps_pheno_repro_df
     ## a) need to reorder the snps_pheno_repro_df by sample.id to match 
       # order of the relate_mat
       # Ascending order using arrange
       snps_pheno_repro_df <- snps_pheno_repro_df %>% 
         arrange(sample.id) 
-    
-    ## b) filter and subset by missing tot.repro
+      
+    ## b) filter samples with no snps data
+      snps_pheno_repro_df <- snps_pheno_repro_df %>%
+        filter(!is.na(kitlg.44277058))  
+
+    ## c) manually update the paternity for three males that were sampled, but
+        # who sired no nestlings by adding 0s for tot.repro and ep.repro for 
+        # males from the zero_fert_males_df
+      zero_fert_males_ls <- dplyr::intersect(snps_pheno_repro_df$band, 
+                                             zero_fert_males_df$Band_ind1)
+      # and manually remove 2850-57579 since this bird was not sampled in 2023
+      zero_fert_males_ls <- zero_fert_males_ls[-2] 
+      
+    ## d) add 0s for tot.repro for the males that sire no nestling
+      snps_pheno_repro_df <- snps_pheno_repro_df %>%
+        mutate(tot.repro = case_when(band %in% zero_fert_males_ls ~ 0,
+          TRUE        ~ tot.repro  # keeps all other original values unchanged
+        )) 
+      
+    ## e) add 0s for ep.repro for the males that sire no nestlig
+      snps_pheno_repro_df <- snps_pheno_repro_df %>%
+        mutate(ep.repro = case_when(band %in% zero_fert_males_ls ~ 0,
+          TRUE        ~ ep.repro  # keeps all other original values unchanged
+        )) 
+      
+    ## f) filter and subset by missing tot.repro
       snps_pheno_repro_df <- snps_pheno_repro_df %>% 
         filter((!is.na(tot.repro)))
+      
+      # NOTE: The list "unkwn_IDobs.csv" includes birds from 2023 where some of 
+      # the assignments of adults to nests were uncertain because we had to 
+      # collect eggs so early in the breeding season before many of the adults
+      # were banded. Males in this list should be excluded from both 
+      # "all reproduction" and "EP reproduction" because their social nests 
+      # are uncertain and we can't classify offspring as within-pair or 
+      # extra-pair. Females in this table can be included in 
+      # "all reproduction" but should be excluded from "EP reproduction" 
+      # for the same reason. 
+      
+    ## g) check if there are any sample.id in snps_pheno_repro_df that are in 
+        # the list of birds that were in a list of adult birds whose social 
+        # nest was not confirmed via ID obs 
+      unkn_id_obs_ls <- intersect(snps_pheno_repro_df$band, 
+                                  unkwn_IDobs_df$band_ind1)
     
-    ## c) filter and subset by missing breast brightness plumage
+    ## h) filter the males that should not be included in tot.repro due to 
+        # no known nest
+      snps_pheno_repro_df <- snps_pheno_repro_df %>%
+        mutate(tot.repro = case_when(
+          sex == 'm' & band %in% unkn_id_obs_ls ~ NA,
+          TRUE        ~ tot.repro  # keeps all other original values unchanged
+        )) %>%
+        filter(!is.na(tot.repro))
+      
+    ## i) Set female ep.repro to NA when IDs with their social nest were 
+        # uncertain 
+      snps_pheno_repro_df <- snps_pheno_repro_df %>%
+        mutate(ep.repro = case_when(
+          sex == 'f' & band %in% unkn_id_obs_ls ~ NA,
+          TRUE        ~ ep.repro  # keeps all other original values unchanged
+        ))
+      
+      # NOTE: The data in "no_nestlings_analyzed.csv" has the list of adults 
+      # for which none of the chicks from their social nest(s) were included 
+      # in the paternity analysis. These individuals should be excluded from 
+      # the "tot.repro" analyses but can still be included in "ep.repro". 
+      
+    ## j) check if there are any sample.id in snps_pheno_repro_df that are in 
+      # the list of birds that were in a list of adult birds for which no
+      # nestlings were sampled and analyzed
+      no_nestlings_ls <- intersect(snps_pheno_repro_df$band, 
+                                   no_nestlings_df$Band_ind1)
+      
+    ## k) Set female and male tot.repro to NA when nestlings from social nest
+      # were not sampled.
+      snps_pheno_repro_df <- snps_pheno_repro_df %>%
+        mutate(tot.repro = case_when(
+          band %in% no_nestlings_ls ~ NA,
+          TRUE        ~ tot.repro  # keeps all other original values unchanged
+        ))
+    
+      
+    ## l) filter and subset by missing breast brightness plumage
       snps_plum_repro_df <- snps_pheno_repro_df %>% 
         filter((!is.na(breast.avg.bright)))
       
-    ## d) filter and subset by misting TS 
+    ## m) filter and subset by misting TS 
       snps_TS_repro_df <- snps_pheno_repro_df %>% 
         filter((!is.na(rt.intact.avg.ts)))
       
       
-  ### 3.6 Subset data for downstream analysis
+  ### 3.5 Subset data for downstream analysis
     ## a) make a female breast plumage subset
       snps_plum_repro_f_df <- snps_plum_repro_df %>%
         filter(sex == 'f')

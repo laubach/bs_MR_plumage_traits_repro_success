@@ -7,7 +7,7 @@
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############               last updated: 7 May 2026               #############
+#############              last updated: 10 June 2026              #############
 ################################################################################
 
 
@@ -54,9 +54,9 @@
     sessionInfo()
     
     # Developed in:   
-    # R version 4.4.2 (2024-10-31)
+    # R version 4.6.0 (2026-04-24)
     # Platform: x86_64-apple-darwin20
-    # Running under: macOS Sequoia 15.1.1
+    # Running under: macOS Tahoe 26.5.1
     
   
   ### 1.4 Set working directory 
@@ -74,15 +74,22 @@
     
   
   ### 2.2 Import paternity data
-    ## a) create a list of csv files that match the pattern
-      pat_file_list <- list.files(path = here('raw_data/'),
-                                  pattern = '^fert.*\\.csv$', 
-                                  recursive = T, full.names = T)
+    ## a) Import ferts_alive_d12_2021-2023.csv as df
+      paternity_df <- read_csv(here('raw_data/ferts_alive_d12_2021-2023.csv'))
+   
+    ## b) Import no_nestlings_analyzed.csv as df
+      # a list of adult birds for which no nestlings were sampled and analyzed 
+      no_nestlings_df <- read_csv(here('raw_data/no_nestlings_analyzed.csv'))
       
-    ## b) load files from list into a single data frame
-      paternity_df <- do.call(rbind, lapply(pat_file_list, read.csv))
-    
-    
+    ## c) Import unkwn_IDobs.csv as df
+      # a list of adult birds whose social nest was not confirmed via ID obs
+      unkwn_IDobs_df <- read_csv(here('raw_data/unkwn_IDobs.csv'))  
+      
+    ## d) Import true_zero_fert_males.csv as df
+      # a list of males who sired no nestlings
+      zero_fert_males_df <- read_csv(here('raw_data/true_zero_fert_males.csv'))  
+      
+     
     
 ###############################################################################
 ##############              3. Import genomic data               ##############
@@ -102,20 +109,9 @@
         left_join(snps_TS_df,
                   by = c('sample.id' = 'sample.id'), 
                   copy = F) 
-    
-    
-  ### 3.2 Import genomic data (vcf.gz files)
-    # ## a) female imputed vcf.gz files
-    #   vcf_female_df <-read.vcfR(
-    #     here('raw_data/hirundo_rustica.final.auto+chrZ+chrW.snps.maf05.depth.chrom.female.impute.vcf.gz'))
-    # 
-    # ## b) male imputed vcf.gz files
-    #   vcf_male_df <-read.vcfR(
-    #     here('raw_data/hirundo_rustica.final.auto+chrZ+chrW.snps.maf05.depth.chrom.male.impute.vcf.gz'))
-    #   
-    
+  
         
-  ### 3.3 Import genome meta data
+  ### 3.2 Import genome meta data
     ## a) create a list of txt files that match the pattern
       coverage_list <- list.files(path = here('cov/'),
                                   pattern = '^coverage.*\\.txt$', 
@@ -148,22 +144,14 @@
       # Files are saved in the 'data' folder in the working directory as an
       # RData file.
       save(file = here('data/1_pheno_reprod_df.RData'), 
-           list = c('pheno_reprod_df', 'paternity_df'))
+           list = c('pheno_reprod_df', 'paternity_df', 'no_nestlings_df',
+                    'unkwn_IDobs_df', 'zero_fert_males_df'))
       
     ## b) Save and export imputed snps for candidate loci
       # Files are saved in the 'data' folder in the working directory as an
       # RData file.
       save(file = here('data/1_snps_df.RData'), 
            list = c('snps_df'))
-      
-    ## c) Save and export raw genomics data
-      # Files are saved in the 'data' folder in the working directory as an
-      # RData file.
-      # save(file = here('data/3_vcf_female_df.RData'), 
-      #      list = c('vcf_female_df'))
-      # 
-      # save(file = here('data/3_vcf_male_df.RData'), 
-      #      list = c('vcf_male_df'))
       
     ## d) Save and export genomic meta data
       # Files are saved in the 'data' folder in the working directory as an

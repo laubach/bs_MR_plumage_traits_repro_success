@@ -7,7 +7,7 @@
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############               last updated: 12 May 2026              #############
+#############              last updated: 10 June 2026              #############
 ################################################################################
 
 
@@ -51,9 +51,9 @@
     sessionInfo()
     
     # Developed in:   
-    # R version 4.4.2 (2024-10-31)
+    # R version 4.6.0 (2026-04-24)
     # Platform: x86_64-apple-darwin20
-    # Running under: macOS Sequoia 15.1.
+    # Running under: macOS Tahoe 26.5.1
     
   
   ### 1.4 Set working directory 

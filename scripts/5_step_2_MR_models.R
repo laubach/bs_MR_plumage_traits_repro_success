@@ -7,7 +7,7 @@
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############              last updated: 12 May 2026               #############
+#############              last updated: 10 June 2026              #############
 ################################################################################
 
 
@@ -67,7 +67,9 @@
     ## c) Graphing/visualization packages        
       # load ggplot2 package
         library('ggplot2')
-      
+    
+      # load patchwork packages
+        library('patchwork')  
     
       # load gridExtra package 
         library ('gridExtra')  
@@ -101,9 +103,9 @@
     sessionInfo()
     
     # Developed in:   
-    # R version 4.4.2 (2024-10-31)
+    # R version 4.6.0 (2026-04-24)
     # Platform: x86_64-apple-darwin20
-    # Running under: macOS Sequoia 15.1.
+    # Running under: macOS Tahoe 26.5.1
     
   
   ### 1.4 Set working directory 
@@ -129,6 +131,9 @@
   ### 2.1 Import sample data files
     ## a) load snps, phenotype, reproduction data, and relatedness data
       load(here('data/5_pred_vals_repro_data.RData'))
+      
+    ## b) load natural plumage reproduction models for graphing
+      load(here('data/5_nat_plum_repro_mods.RData'))
       
 
       
@@ -370,7 +375,7 @@
 
   ### 5.5 Make formatted tables of the associations between the instrument
         # breast brightness
-    # a) Combine Step 2: Female regression estimates into a tidy table
+    ## a) Combine Step 2: Female regression estimates into a tidy table
       trait_tot_repro_smmry <- 
         bind_rows(snps_pred_plum_repro_zinf_nb1_f_tidy,
                   snps_pred_plum_repro_zinf_nb1_m_tidy,
@@ -388,28 +393,194 @@
       flextable::save_as_docx(trait_tot_repro_smmry_frmt, 
                       path = here('output/trait_tot_repro_smmry_frmt.docx')) 
       
-      
-      
+
 
 ###############################################################################
 ##############    6. Results visualisation    ##############
 ###############################################################################         
 
-  ### 6.1 graphs
-    
+  ### 6.1 Format models summaries for graphing
+    # a) Tidy female_plum_repro_sum for graphing
+      # rename model 
+      female_plum_repro_sum[3, 1] <- 'natural color'
+      # filter to retain on specific mode
+      female_plum_repro_sum <- female_plum_repro_sum %>%
+        filter(model == 'natural color')
+      
+    # b) Tidy male_plum_repro_sum for graphing
+      # rename model 
+      male_plum_repro_sum[2, 1] <- 'natural color'
+      # filter to retain on specific mode
+      male_plum_repro_sum <- male_plum_repro_sum %>%
+        filter(model == 'natural color')
+      
+    ## c) Combine models tidy table
+      trait_tot_repro_graphing_tbl <- 
+        bind_rows(female_plum_repro_sum,
+                  snps_pred_plum_repro_zinf_nb1_f_tidy,
+                  pgs_pred_plum_repro_zinf_nb1_f_tidy,
+                  male_plum_repro_sum,
+                  snps_pred_plum_repro_zinf_nb1_m_tidy,
+                  pgs_pred_plum_repro_zinf_nb1_m_tidy)
+      
+    ## d) add a variable 'sex' for subsestting graphs
+      trait_tot_repro_graphing_tbl$sex <- c('female', 'female', 'female', 
+                                            'male', 'male', 'male')
+      
+    ## e) separate 95% CI into lower and upper
+      trait_tot_repro_graphing_tbl <-  trait_tot_repro_graphing_tbl %>%
+      separate_wider_delim(
+        cols = `95% CI`, 
+        delim = ', ', 
+        names = c('95% CI Lower', '95% CI Upper')) %>%
+        mutate(across(c(`95% CI Lower`, `95% CI Upper`), as.numeric))
+      
+    # b) Tidy trait_tot_repro_graphing_tbl for graphing
+      # rename model 
+      trait_tot_repro_graphing_tbl[2, 1] <- 'SNPs instrument'
+      trait_tot_repro_graphing_tbl[3, 1] <- 'PGS instrument'
+      trait_tot_repro_graphing_tbl[5, 1] <- 'SNPs instrument'
+      trait_tot_repro_graphing_tbl[6, 1] <- 'PGS instrument'
+      
+    # c) set the order of the models
+      trait_tot_repro_graphing_tbl$model <- 
+        factor(trait_tot_repro_graphing_tbl$model, 
+               levels = c('natural color', 'SNPs instrument', 
+                          'PGS instrument'))
 
-###############################################################################
-##############                  4. Export data                   ##############
-###############################################################################
       
-  ### 4.1 Export data to an RData file 
-      # Files are saved in the 'data' folder in the working directory as an
-      # RData file.
+      levels(trait_tot_repro_graphing_tbl$model)
       
-    ## a) Save and export relatedness data
-      save(file = here('data/3_relatedness_data.RData'), 
-           list = c('relate_mat', 'relate_coef_df'))
       
+  ### 6.2 Graph model summaries     
+    ## a) Graph results of female natural vs genetic instrument models of 
+      # breast brightness and total fecundity
+      f_natural_vs_genetic_inst_plot <- 
+        ggplot(data = (trait_tot_repro_graphing_tbl %>%
+                         filter(`sex` == 'female')), 
+               aes(x = `model`, 
+                   y = `Rate Ratio (exponentiated)`, 
+                   color = `model`)) +
+        ylim(0.25, 2) +
+        #facet_wrap(~ sex) +
+        
+        geom_hline(yintercept = 1, color = 'red',
+                   linetype = 2, linewidth = 2) + # line at null behind coefs
+        geom_point(size = 6) +
+        geom_errorbar(aes(ymin=(`95% CI Lower`), 
+                          ymax=(`95% CI Upper`)), linewidth = 2,  linetype = 1,
+                      width = 0.25, position = position_dodge(0.5)) +
+        scale_color_manual(values=c('slateblue4', 'slateblue3', 
+                                    'slateblue1'
+        )) +
+        #coord_flip() + # flip x and y axes
+        labs(title = 'Natural plumage vs genetic instrument') +
+        theme(plot.title = element_text(hjust = 0.5, size = 20)) + # center title
+        theme(plot.subtitle = element_text(hjust = 0.5, size = 14)) + 
+        # bold and size title and axes labels
+        theme(text = element_text(size=22, face = 'bold')) +
+        theme(legend.position = 'none') +
+        theme(axis.ticks = element_blank()) + # remove axis ticks
+        # remove background color
+        theme(panel.background = element_rect(fill = 'white')) +
+        # add major axes
+        theme(axis.line = element_line(colour = 'black',
+                                       linewidth = 0.5, linetype = 'solid')) +
+        # change axes font style, color, size, angle, margin, and legend
+        theme(axis.text.x = element_text(face='bold', color='black', 
+                                         size=18, angle=0,
+                                         margin = margin(t = 10, r = 0, 
+                                                         b = 10, l = 0)),
+              axis.text.y = element_text(face='bold', color='black', 
+                                         size=22, angle=0, 
+                                         margin = margin(t = 0, r = 10, 
+                                                         b = 0, l = 10)),
+              legend.title=element_blank(),
+              legend.text=element_text(size=14),
+              legend.position = 'none', #c(0.91, 0.94),
+              legend.key = element_blank()) +
+        xlab(expression(italic('Female models'))) +
+        ylab(expression
+             (bold('Reproduction Rate Ratio (95% CI)')))  
+      
+    ## b) view plot  
+      print(f_natural_vs_genetic_inst_plot)
+      
+    ## c) Graph results of male natural vs genetic instrument models of 
+      # breast brightness and total fecundity
+      m_natural_vs_genetic_inst_plot <- 
+        ggplot(data = (trait_tot_repro_graphing_tbl %>%
+                         filter(`sex` == 'male')), 
+               aes(x = `model`, 
+                   y = `Rate Ratio (exponentiated)`, 
+                   color = `model`)) +
+        ylim(0.25, 2) +
+        #facet_wrap(~ sex) +
+        
+        geom_hline(yintercept = 1, color = 'red',
+                   linetype = 2, linewidth = 2) + # line at null behind coefs
+        geom_point(size = 6) +
+        geom_errorbar(aes(ymin=(`95% CI Lower`), 
+                          ymax=(`95% CI Upper`)), linewidth = 2,  linetype = 1,
+                      width = 0.25, position = position_dodge(0.5)) +
+        scale_color_manual(values=c('springgreen4', 'springgreen3', 
+                                    'springgreen1'
+        )) +
+        #coord_flip() + # flip x and y axes
+        labs(title = 'Natural plumage vs genetic instrument') +
+        theme(plot.title = element_text(hjust = 0.5, size = 20)) + # center title
+        theme(plot.subtitle = element_text(hjust = 0.5, size = 14)) + 
+        # bold and size title and axes labels
+        theme(text = element_text(size=22, face = 'bold')) +
+        theme(legend.position = 'none') +
+        theme(axis.ticks = element_blank()) + # remove axis ticks
+        # remove background color
+        theme(panel.background = element_rect(fill = 'white')) +
+        # add major axes
+        theme(axis.line = element_line(colour = 'black',
+                                       linewidth = 0.5, linetype = 'solid')) +
+        # change axes font style, color, size, angle, margin, and legend
+        theme(axis.text.x = element_text(face='bold', color='black', 
+                                         size=18, angle=0,
+                                         margin = margin(t = 10, r = 0, 
+                                                         b = 10, l = 0)),
+              # axis.text.y = element_text(face='bold', color='black', 
+              #                            size=22, angle=0, 
+              #                            margin = margin(t = 0, r = 0, 
+              #                                            b = 0, l = 10)),
+              axis.title.y = element_blank(), # Removes the y-axis title (label)
+              axis.text.y  = element_blank(), # Removes the tick labels
+              legend.title=element_blank(),
+              legend.text=element_text(size=14),
+              legend.position = 'none', #c(0.91, 0.94),
+              legend.key = element_blank()) +
+        xlab(expression(italic('Male models'))) +
+        ylab(expression
+             (bold('Reproduction Rate Ratio (95% CI)'))) 
+      
+    ## d) view plot  
+      print(m_natural_vs_genetic_inst_plot)
+      
+    ## e) make panel plot using patchwork
+      panel_plot <- (f_natural_vs_genetic_inst_plot | 
+                       m_natural_vs_genetic_inst_plot)
+      
+    ## f) view panel plot
+      panel_plot
+      
+    ## g) save panel plot
+      # use ggsave to save the plot
+      ggsave('panel_plot.pdf', 
+             plot = panel_plot, 
+             device = NULL,
+             path = paste0(here(),'/output'), 
+             scale = 1, width = 16,
+             height = 7,
+             units = c('in'), dpi = 300, limitsize = TRUE)
+      
+      
+     
+
       
 
     

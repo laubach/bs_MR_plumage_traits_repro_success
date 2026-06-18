@@ -7,7 +7,7 @@
 #############                                                      #############
 #############                   By: Zach Laubach                   #############
 #############                 created: 9 Sept 2025                 #############
-#############               last updated: 12 May 2026              #############
+#############              last updated: 10 June 2026              #############
 ################################################################################
 
 
@@ -92,9 +92,9 @@
     sessionInfo()
     
     # Developed in:   
-    # R version 4.4.2 (2024-10-31)
+    # R version 4.6.0 (2026-04-24)
     # Platform: x86_64-apple-darwin20
-    # Running under: macOS Sequoia 15.1.
+    # Running under: macOS Tahoe 26.5.1
     
   
   ### 1.4 Set working directory 
@@ -138,7 +138,7 @@
       n.tot.TS <- as.numeric(sum(!is.na(snps_TS_repro_df$sample.id)))
       
     ## c) Descriptive stats for sex  
-      snps_plum_repro_df %>%
+      snps_pheno_repro_df %>%
         group_by(sex) %>%
         summarise (n = sum(!is.na(sample.id)))%>%
         mutate(n.plum = n / n.tot.plum) %>%
@@ -246,7 +246,7 @@
         
     ## b) create a list of monomorphic breast brightness snps for females
       drop_female_plum <- 
-        df_f_plum_snp_summary$snp[df_f_plum_snp_summary$n == 100]
+        df_f_plum_snp_summary$snp[df_f_plum_snp_summary$n == 83]
     
     ## c) assess monorphic breast brightness snps among males    
       df_m_plum_snp_summary <- snps_plum_repro_df %>%
@@ -257,7 +257,7 @@
       
     ## d) create a list of monomorphic breast brightness snps for males  
         drop_male_plum <- 
-          df_m_plum_snp_summary$snp[df_f_plum_snp_summary$n == 158]
+          df_m_plum_snp_summary$snp[df_f_plum_snp_summary$n == 93]
         
     ## e) union creating a combined list of breast brightness snps that are 
         # monomorphic in either sex
@@ -271,7 +271,7 @@
         count(snp, dosage)
     
     ## g) create a list of monomorphic tail streamer snps for females  
-      drop_female_TS <- df_f_TS_snp_summary$snp[df_f_TS_snp_summary$n == 100]
+      drop_female_TS <- df_f_TS_snp_summary$snp[df_f_TS_snp_summary$n == 83]
      
     ## h) assess monomorphic tail streamer snps for among males    
       df_m_TS_snp_summary <- snps_TS_repro_df %>%
@@ -281,14 +281,14 @@
         count(snp, dosage)
     
     ## i) create a list of monomorphic tail streamer snps for males       
-      drop_male_TS <- df_m_TS_snp_summary$snp[df_m_TS_snp_summary$n == 157]
+      drop_male_TS <- df_m_TS_snp_summary$snp[df_m_TS_snp_summary$n == 92]
       
     ## j) union creating a combined list of tail streamer snps that are 
       # monomorphic in either sex  
       drop_TS <- dplyr::union(drop_female_TS, drop_male_TS)
      
     ## k) union creating a combined list of breast brightness and TS snps 
-      # that aremonomorphic in either sex   
+      # that are monomorphic in either sex   
       drop_all <- dplyr::union(drop_plum, drop_TS)
     
     ## l) remove monomorphic snps from snps_pheno_repro_df
@@ -321,10 +321,7 @@
           select(!c(drop_all))
         
         
-  ### 4.2 Summarize the frequency of snps for snps_plum_repro_df
-  
-        
-  ### 4.3 Tidy and summarize relatedness in the sample population
+  ### 4.2 Tidy and summarize relatedness in the sample population
     ## a) filter relate_coef_df to match individual in snps_plum_repro_df
         relate_coef_plum_df <- relate_coef_df %>%
           filter(ind1 %in% snps_plum_repro_df$sample.id & 
@@ -1153,11 +1150,13 @@
       # Files are saved in the 'data' folder in the working directory as an
       # RData file.
       
-    ## a) Save and export relatedness data
+    ## a) Save and export snps_plum_repro data data
       save(file = here('data/4_MR_data.RData'), 
            list = c('snps_plum_repro_df', 'snps_plum_repro_f_df',
                     'snps_plum_repro_m_df'))
       
+    ## b) Save and export natural plumage reproduction models for graphing
+      save(file = here('data/5_nat_plum_repro_mods.RData'), 
+           list = c('female_plum_repro_sum', 'male_plum_repro_sum'))
       
-
-    
+  

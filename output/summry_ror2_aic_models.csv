@@ -1,0 +1,1 @@
+"cond((Int))","disp((Int))","cond(propto(0 + sample.id | 1, relate_mat_plum_snps))","cond(ror2.44196487)","cond(ror2.44206228)","cond(sex)","df","logLik","AICc","delta","weight"
