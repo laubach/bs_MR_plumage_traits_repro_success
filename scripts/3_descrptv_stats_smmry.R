@@ -119,10 +119,10 @@
 
   ### 2.1 Import sample data files
     ## a) load snps, phenotype, and reproduction data
-      load(here('data/2-3_snps_pheno_repro_df.RData'))
+      load(here('data/2-4_snps_pheno_repro_df.RData'))
       
     ## b) Load relatedness data
-      load(here('data/3-4_relate_df.RData'))
+      load(here('data/3-5_relate_df.RData'))
 
       
     
@@ -257,7 +257,7 @@
       
     ## d) create a list of monomorphic breast brightness snps for males  
         drop_male_plum <- 
-          df_m_plum_snp_summary$snp[df_f_plum_snp_summary$n == 93]
+          df_m_plum_snp_summary$snp[df_m_plum_snp_summary$n == 93]
         
     ## e) union creating a combined list of breast brightness snps that are 
         # monomorphic in either sex
@@ -320,8 +320,38 @@
         snps_TS_repro_m_df <- snps_TS_repro_m_df %>%
           select(!c(drop_all))
         
+  
+  ### 4.2 Calculate genotype frequencies
+  
+       ## a) update genotype frequencies 
+        geno_freq_summary <- snps_pheno_repro_df %>%
+          pivot_longer(cols =  c(kitlg.44277058:apc.46065597), 
+                       names_to = 'Variable', 
+                       values_to = 'Response') %>%
+          group_by(Variable, Response) %>%
+          summarise(count = n(), .groups = 'drop_last') %>%
+          mutate(proportion = count / sum(count)) 
         
-  ### 4.2 Tidy and summarize relatedness in the sample population
+      ## b) update genotype frequencies - females
+        geno_freq_summary_f <- snps_plum_repro_f_df %>%
+          pivot_longer(cols =  c(kitlg.44277058:apc.46065597), 
+                       names_to = 'Variable', 
+                       values_to = 'Response') %>%
+          group_by(Variable, Response) %>%
+          summarise(count = n(), .groups = 'drop_last') %>%
+          mutate(proportion = count / sum(count)) 
+        
+      ## c) update genotype frequencies - males
+        geno_freq_summary_m <- snps_plum_repro_m_df %>%
+          pivot_longer(cols =  c(kitlg.44277058:apc.46065597), 
+                       names_to = 'Variable', 
+                       values_to = 'Response') %>%
+          group_by(Variable, Response) %>%
+          summarise(count = n(), .groups = 'drop_last') %>%
+          mutate(proportion = count / sum(count)) 
+
+        
+  ### 4.3 Tidy and summarize relatedness in the sample population
     ## a) filter relate_coef_df to match individual in snps_plum_repro_df
         relate_coef_plum_df <- relate_coef_df %>%
           filter(ind1 %in% snps_plum_repro_df$sample.id & 
@@ -506,641 +536,6 @@
       
       
       
-###############################################################################
-##############  6. Model natural plumage traits and reproduction ##############
-###############################################################################      
-    
-  ### 6.1 Model fitting to identify the appropriate distribution for count
-      # data
-    ## a) Fit glmmTMB model (tot.repro ~ breast.avg.bright) 
-      # with Poisson distribution
-      snps_pred_plum_repro_poiss_mod <-  glmmTMB(tot.repro ~ 
-                               breast.avg.bright
-                               + sex  +
-                         # proportional covariance matrix based on relatedness
-                               propto(0 + sample.id | 1, relate_mat_plum_snps),
-                                                 data = snps_plum_repro_df,
-                                                 family = poisson)
-      
-      
-    ## b) udpate the Poisson model to include zero-inflation
-      snps_pred_plum_repro_zinf_poiss_mod <- 
-        update(snps_pred_plum_repro_poiss_mod, ziformula=~1)
-      
-    ## c) udpate the Poisson model to fit a negative binomial 2 distribution
-      # where variance = µ(1 + µ/k)
-      snps_pred_plum_repro_nb2_mod <- 
-        update(snps_pred_plum_repro_poiss_mod, family = nbinom2)
-      
-    ## d) udpate the negative binomial 2 model to include zero-inflation
-      snps_pred_plum_repro_zinf_nb2_mod <- 
-        update(snps_pred_plum_repro_nb2_mod, ziformula=~1)
-      
-    ## e) udpate the Poisson model to fit a negative binomial 1 distribution
-      # where variance = ϕµ
-      snps_pred_plum_repro_nb1_mod <- 
-        update(snps_pred_plum_repro_poiss_mod, family = nbinom1)
-      
-    ## f) udpate the negative binomial 1 model to include zero-inflation
-      snps_pred_plum_repro_zinf_nb1_mod <- 
-        update(snps_pred_plum_repro_nb1_mod,  ziformula=~1)
-      
-    ## g) assess delta AIC using bbmle to determine best fitting model   
-      AICtab(snps_pred_plum_repro_poiss_mod, 
-             snps_pred_plum_repro_zinf_poiss_mod,
-             snps_pred_plum_repro_nb2_mod, 
-             snps_pred_plum_repro_zinf_nb2_mod, 
-             snps_pred_plum_repro_nb1_mod, 
-             snps_pred_plum_repro_zinf_nb1_mod)
-      
-      
-  ### 6.2 check diagnostics of best fitting model using 'DHARMa' and 
-      # 'performance' packages
-    ## a)  simulate residuals
-      resid_best_fit_mod <- 
-        simulateResiduals(fittedModel = snps_pred_plum_repro_zinf_nb1_mod, 
-                          n = 250)
-      
-    ## b) plot residuals
-      plot(resid_best_fit_mod)
-      
-    ## c) assess over dispersion
-      testDispersion(resid_best_fit_mod)
-      performance::check_overdispersion(snps_pred_plum_repro_zinf_nb1_mod) 
-      
-    ## d) assess zero inflation
-      testZeroInflation(resid_best_fit_mod)
-      performance::check_zeroinflation(snps_pred_plum_repro_zinf_nb1_mod)
-      
-      
-  ### 6.3 Models of natural breast brightness on reproduction - female models
-    ## a) glmmTMB model for effect of natural breast brightness on the 
-      # number of nestlings fledged from nest attempts 1 and 2
-      breast_repro_zinf_nb1_f_mod <- glmmTMB(tot.repro ~
-                      scale(breast.avg.bright) +
-                      # proportional covariance matrix based on relatedness
-                          propto(0 + sample.id | 1, relate_mat_plum_repro_f),
-                          data = snps_plum_repro_f_df,
-                          ziformula=~1,
-                              family = nbinom1)
-      
-    ## b) model diagnostics
-      performance::check_overdispersion(breast_repro_zinf_nb1_f_mod) 
-      performance::check_zeroinflation(breast_repro_zinf_nb1_f_mod)
-      
-    ## c) model summary
-      summary(breast_repro_zinf_nb1_f_mod)
-      
-    ## d) tidy effect estimates
-      breast_repro_zinf_nb1_f_tidy <- 
-        tidy(breast_repro_zinf_nb1_f_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## e) label model
-      breast_repro_zinf_nb1_f_tidy$model <-
-        c('total reproduction ~ breast color')
-      
-    ## f) tidy breast_repro_zinf_nb1_f_tidy by making a new column '95% CI'
-      breast_repro_zinf_nb1_f_tidy$'95% CI' = 
-        paste(round(breast_repro_zinf_nb1_f_tidy$conf.low, 3),
-              round(breast_repro_zinf_nb1_f_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## g) tidy breast_repro_zinf_nb1_f_tidy by removing extra columns and rows
-      breast_repro_zinf_nb1_f_tidy <- breast_repro_zinf_nb1_f_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## h) move 'model' to first column
-      breast_repro_zinf_nb1_f_tidy <- breast_repro_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-    ## i) glmmTMB model for effect of natural breast brightness on the 
-      # number of EP nestlings fledged from nest attempts 1 and 2
-      breast_ep_repro_zinf_nb1_f_mod <-  glmmTMB(ep.repro ~
-                  scale(breast.avg.bright) +
-                  # proportional covariance matrix based on relatedness
-                  propto(0 + sample.id | 1, relate_mat_plum_repro_f),
-                  data = snps_plum_repro_f_df,
-                  ziformula=~1,
-                    family = nbinom1)
-      
-    ## j) model diagnostics
-      performance::check_overdispersion(breast_ep_repro_zinf_nb1_f_mod) 
-      performance::check_zeroinflation(breast_ep_repro_zinf_nb1_f_mod)
-      
-    ## k) model summary
-      summary(breast_ep_repro_zinf_nb1_f_mod)
-      
-    ## l) tidy effect estimates
-      breast_ep_repro_zinf_nb1_f_tidy <- 
-        tidy(breast_ep_repro_zinf_nb1_f_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## m) label model
-      breast_ep_repro_zinf_nb1_f_tidy$model <-
-        c('EP ~ breast color')
-      
-    ## n) tidy breast_ep_repro_zinf_nb1_f_tidy by making a new column '95% CI'
-      breast_ep_repro_zinf_nb1_f_tidy$'95% CI' = 
-        paste(round(breast_ep_repro_zinf_nb1_f_tidy$conf.low, 3),
-              round(breast_ep_repro_zinf_nb1_f_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## o) tidy breast_ep_repro_zinf_nb1_f_tidy by removing extra columns and rows
-      breast_ep_repro_zinf_nb1_f_tidy <- breast_ep_repro_zinf_nb1_f_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## p) move 'model' to first column
-      breast_ep_repro_zinf_nb1_f_tidy <- breast_ep_repro_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-    ## q) glmmTMB model for effect of natural breast brightness on the 
-      # number of eggs (fecundity) from nest attempts 1 and 2
-      breast_fecund_zinf_nb1_f_mod <- glmmTMB(sum.fecundity ~
-                  scale(breast.avg.bright) +
-                  # proportional covariance matrix based on relatedness
-                  propto(0 + sample.id | 1, relate_mat_plum_repro_f),
-                  data = snps_plum_repro_f_df,
-                  ziformula=~1,
-                    family = nbinom1)
-      
-    ## r) model diagnostics
-      performance::check_overdispersion(breast_fecund_zinf_nb1_f_mod) 
-      performance::check_zeroinflation(breast_fecund_zinf_nb1_f_mod)
-      
-    ## s) model summary
-      summary(breast_fecund_zinf_nb1_f_mod)
-      
-    ## t) tidy effect estimates
-      breast_fecund_zinf_nb1_f_tidy <- 
-        tidy(breast_fecund_zinf_nb1_f_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## u label model
-      breast_fecund_zinf_nb1_f_tidy$model <-
-        c('fecundity ~ breast color')
-      
-    ## v) tidy breast_fecund_zinf_nb1_f_tidy by making a new column '95% CI'
-      breast_fecund_zinf_nb1_f_tidy$'95% CI' = 
-        paste(round(breast_fecund_zinf_nb1_f_tidy$conf.low, 3),
-              round(breast_fecund_zinf_nb1_f_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## w) tidy breast_fecund_zinf_nb1_f_tidy by removing extra columns and rows
-      breast_fecund_zinf_nb1_f_tidy <- breast_fecund_zinf_nb1_f_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## x) move 'model' to first column
-      breast_fecund_zinf_nb1_f_tidy <- breast_fecund_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-   
-  ### 6.4 Models of natural tail streamer on reproduction - female models
-    ## a) glmmTMB model for effect of natural tail streamer on the 
-      # number of nestlings fledged from nest attempts 1 and 2
-      TS_repro_zinf_nb1_f_mod <- glmmTMB(tot.repro ~
-                            scale(rt.intact.avg.ts) +   
-                        # proportional covariance matrix based on relatedness
-                            propto(0 + sample.id | 1, relate_mat_plum_repro_f),
-                            data = snps_plum_repro_f_df,
-                            ziformula=~1,
-                              family = nbinom1)
-      
-    ## b) model diagnostics
-      performance::check_overdispersion(TS_repro_zinf_nb1_f_mod) 
-      performance::check_zeroinflation(TS_repro_zinf_nb1_f_mod)
-      
-    ## c) model summary
-      summary(TS_repro_zinf_nb1_f_mod)
-      
-    ## d) tidy effect estimates
-      TS_repro_zinf_nb1_f_tidy <- 
-        tidy(TS_repro_zinf_nb1_f_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## e) label model
-      TS_repro_zinf_nb1_f_tidy$model <-
-        c('total reproduction ~ TS')
-      
-    ## f) tidy TS_repro_zinf_nb1_f_tidy by making a new column '95% CI'
-      TS_repro_zinf_nb1_f_tidy$'95% CI' = 
-        paste(round(TS_repro_zinf_nb1_f_tidy$conf.low, 3),
-              round(TS_repro_zinf_nb1_f_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## g) tidy TS_repro_zinf_nb1_f_tidy by removing extra columns and rows
-      TS_repro_zinf_nb1_f_tidy <- TS_repro_zinf_nb1_f_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## h) move 'model' to first column
-      TS_repro_zinf_nb1_f_tidy <- TS_repro_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-    ## i) glmmTMB model for effect of natural tail streamer on the 
-      # number of EP nestlings fledged from nest attempts 1 and 2
-      TS_ep_repro_zinf_nb1_f_mod <-  glmmTMB(ep.repro ~
-                          scale(rt.intact.avg.ts) +
-                       # proportional covariance matrix based on relatedness
-                          propto(0 + sample.id | 1, relate_mat_plum_repro_f),
-                          data = snps_plum_repro_f_df,
-                          ziformula=~1,
-                             family = nbinom1)
-      
-    ## j) model diagnostics
-      performance::check_overdispersion(TS_ep_repro_zinf_nb1_f_mod) 
-      performance::check_zeroinflation(TS_ep_repro_zinf_nb1_f_mod)
-      
-    ## k) model summary
-      summary(TS_ep_repro_zinf_nb1_f_mod)
-      
-    ## l) tidy effect estimates
-      TS_ep_repro_zinf_nb1_f_tidy <- 
-        tidy(TS_ep_repro_zinf_nb1_f_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## m) label model
-      TS_ep_repro_zinf_nb1_f_tidy$model <-
-        c('EP ~ TS')
-      
-    ## n) tidy TS_ep_repro_zinf_nb1_f_tidy by making a new column '95% CI'
-      TS_ep_repro_zinf_nb1_f_tidy$'95% CI' = 
-        paste(round(TS_ep_repro_zinf_nb1_f_tidy$conf.low, 3),
-              round(TS_ep_repro_zinf_nb1_f_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## o) tidy TS_ep_repro_zinf_nb1_f_tidy by removing extra columns and rows
-      TS_ep_repro_zinf_nb1_f_tidy <- TS_ep_repro_zinf_nb1_f_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## p) move 'model' to first column
-      TS_ep_repro_zinf_nb1_f_tidy <- TS_ep_repro_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-    ## q) glmmTMB model for effect of natural tail streamer on the 
-      # number of eggs (fecundity) from nest attempts 1 and 2
-      TS_fecund_zinf_nb1_f_mod <- glmmTMB(sum.fecundity ~
-                            scale(rt.intact.avg.ts) +
-                        # proportional covariance matrix based on relatedness
-                            propto(0 + sample.id | 1, relate_mat_plum_repro_f),
-                            data = snps_plum_repro_f_df,
-                            ziformula=~1,
-                              family = nbinom1)
-      
-    ## r) model diagnostics
-      performance::check_overdispersion(TS_fecund_zinf_nb1_f_mod) 
-      performance::check_zeroinflation(TS_fecund_zinf_nb1_f_mod)
-      
-    ## s) model summary
-      summary(TS_fecund_zinf_nb1_f_mod)
-      
-    ## t) tidy effect estimates
-      TS_fecund_zinf_nb1_f_tidy <- 
-        tidy(TS_fecund_zinf_nb1_f_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## u) label model
-      TS_fecund_zinf_nb1_f_tidy$model <-
-        c('fecundity ~ TS')
-      
-    ## v) tidy TS_fecund_zinf_nb1_f_tidy by making a new column '95% CI'
-      TS_fecund_zinf_nb1_f_tidy$'95% CI' = 
-        paste(round(TS_fecund_zinf_nb1_f_tidy$conf.low, 3),
-              round(TS_fecund_zinf_nb1_f_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## w) tidy TS_fecund_zinf_nb1_f_tidy by removing extra columns and rows
-      TS_fecund_zinf_nb1_f_tidy <- TS_fecund_zinf_nb1_f_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## x) move 'model' to first column
-      TS_fecund_zinf_nb1_f_tidy <- TS_fecund_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`)  
-      
-
-  ### 6.5 Make formatted tables of the associations between natural
-      # breast brightness and tail streamer with reproduction - females
-    ## a) row bind breast_repro_zinf_nb1_f_tidy, 
-      # breast_ep_repro_zinf_nb1_f_tidy, TS_repro_zinf_nb1_f_tidy, 
-      # breast_fecund_zinf_nb1_f_tidy, TS_repro_zinf_nb1_f_tidy
-      # TS_ep_repro_zinf_nb1_f_tidy, and TS_fecund_zinf_nb1_f_tidy
-      female_plum_repro_sum <- bind_rows(breast_repro_zinf_nb1_f_tidy,
-                                       breast_ep_repro_zinf_nb1_f_tidy,
-                                       breast_fecund_zinf_nb1_f_tidy,
-                                       TS_repro_zinf_nb1_f_tidy, 
-                                       TS_ep_repro_zinf_nb1_f_tidy,
-                                       TS_fecund_zinf_nb1_f_tidy) 
-      
-    ## b) format table creating flextable object 
-      female_plum_repro_sum_frmt <- nice_table(female_plum_repro_sum, 
-                                             separate.header = T)
-      
-    ## c) preview the table as a word doc    
-      #print(female_plum_repro_sum_frmt, preview = 'docx')
-      
-    ## d) save female_plum_repro_sum_frmt as a word doc
-      flextable::save_as_docx(female_plum_repro_sum_frmt, 
-                        path = here('output/female_plum_repro_sum_frmt.docx'))  
-      
-      
-      
-  ### 6.6 Models of natural breast brightness on reproduction - male models
-    ## a) glmmTMB model for effect of natural breast brightness on the 
-      # number of nestlings fledged from nest attempts 1 and 2
-      breast_repro_zinf_nb1_m_mod <- glmmTMB(tot.repro ~
-                            scale(breast.avg.bright) +
-                         # proportional covariance matrix based on relatedness
-                            propto(0 + sample.id | 1, relate_mat_plum_repro_m),
-                            data = snps_plum_repro_m_df,
-                            ziformula=~1,
-                              family = nbinom1)
-      
-    ## b) model diagnostics
-      performance::check_overdispersion(breast_repro_zinf_nb1_m_mod) 
-      performance::check_zeroinflation(breast_repro_zinf_nb1_m_mod)
-      
-    ## c) model summary
-      summary(breast_repro_zinf_nb1_m_mod)
-      
-    ## d) tidy effect estimates
-      breast_repro_zinf_nb1_m_tidy <- 
-        tidy(breast_repro_zinf_nb1_m_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## e) label model
-      breast_repro_zinf_nb1_m_tidy$model <-
-        c('total reproduction ~ breast color')
-      
-    ## f) tidy breast_repro_zinf_nb1_m_tidy by making a new column '95% CI'
-      breast_repro_zinf_nb1_m_tidy$'95% CI' = 
-        paste(round(breast_repro_zinf_nb1_m_tidy$conf.low, 3),
-              round(breast_repro_zinf_nb1_m_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## g) tidy breast_repro_zinf_nb1_m_tidy by removing extra columns and rows
-      breast_repro_zinf_nb1_m_tidy <- breast_repro_zinf_nb1_m_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## h) move 'model' to first column
-      breast_repro_zinf_nb1_m_tidy <- breast_repro_zinf_nb1_m_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-    ## i) glmmTMB model for effect of natural breast brightness on the 
-      # number of EP nestlings fledged from nest attempts 1 and 2
-      breast_ep_repro_zinf_nb1_m_mod <-  glmmTMB(ep.repro ~
-                            scale(breast.avg.bright) +
-                        # proportional covariance matrix based on relatedness
-                            propto(0 + sample.id | 1, relate_mat_plum_repro_m),
-                            data = snps_plum_repro_m_df,
-                            ziformula=~1,
-                              family = nbinom1)
-      
-    ## j) model diagnostics
-      performance::check_overdispersion(breast_ep_repro_zinf_nb1_m_mod) 
-      performance::check_zeroinflation(breast_ep_repro_zinf_nb1_m_mod)
-      
-    ## k) model summary
-      summary(breast_ep_repro_zinf_nb1_m_mod)
-      
-    ## l) tidy effect estimates
-      breast_ep_repro_zinf_nb1_m_tidy <- 
-        tidy(breast_ep_repro_zinf_nb1_m_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## m) label model
-      breast_ep_repro_zinf_nb1_m_tidy$model <-
-        c('EP ~ breast color')
-      
-    ## n) tidy breast_ep_repro_zinf_nb1_m_tidy by making a new column '95% CI'
-      breast_ep_repro_zinf_nb1_m_tidy$'95% CI' = 
-        paste(round(breast_ep_repro_zinf_nb1_m_tidy$conf.low, 3),
-              round(breast_ep_repro_zinf_nb1_m_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## o) tidy breast_ep_repro_zinf_nb1_m_tidy by removing extra columns and rows
-      breast_ep_repro_zinf_nb1_m_tidy <- breast_ep_repro_zinf_nb1_m_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## p) move 'model' to first column
-      breast_ep_repro_zinf_nb1_m_tidy <- breast_ep_repro_zinf_nb1_m_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-      
-  ### 6.7 Models of natural tail streamer on reproduction - male models
-    ## a) glmmTMB model for effect of natural tail streamer on the 
-      # number of nestlings fledged from nest attempts 1 and 2
-      TS_repro_zinf_nb1_m_mod <- glmmTMB(tot.repro ~
-                            scale(rt.intact.avg.ts) +   
-                        # proportional covariance matrix based on relatedness
-                            propto(0 + sample.id | 1, relate_mat_plum_repro_m),
-                            data = snps_plum_repro_m_df,
-                            ziformula=~1,
-                              family = nbinom1)
-      
-    ## b) model diagnostics
-      performance::check_overdispersion(TS_repro_zinf_nb1_m_mod) 
-      performance::check_zeroinflation(TS_repro_zinf_nb1_m_mod)
-      
-    ## c) model summary
-      summary(TS_repro_zinf_nb1_m_mod)
-      
-    ## d) tidy effect estimates
-      TS_repro_zinf_nb1_m_tidy <- 
-        tidy(TS_repro_zinf_nb1_m_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## e) label model
-      TS_repro_zinf_nb1_m_tidy$model <-
-        c('total reproduction ~ TS')
-      
-    ## f) tidy TS_repro_zinf_nb1_m_tidy by making a new column '95% CI'
-      TS_repro_zinf_nb1_m_tidy$'95% CI' = 
-        paste(round(TS_repro_zinf_nb1_m_tidy$conf.low, 3),
-              round(TS_repro_zinf_nb1_m_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## g) tidy TS_repro_zinf_nb1_m_tidy by removing extra columns and rows
-      TS_repro_zinf_nb1_m_tidy <- TS_repro_zinf_nb1_m_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## h) move 'model' to first column
-      TS_repro_zinf_nb1_m_tidy <- TS_repro_zinf_nb1_m_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-    ## i) glmmTMB model for effect of natural tail streamer on the 
-      # number of EP nestlings fledged from nest attempts 1 and 2
-      TS_ep_repro_zinf_nb1_m_mod <-  glmmTMB(ep.repro ~
-                            scale(rt.intact.avg.ts) +
-                        # proportional covariance matrix based on relatedness
-                            propto(0 + sample.id | 1, relate_mat_plum_repro_m),
-                            data = snps_plum_repro_m_df,
-                            ziformula=~1,
-                              family = nbinom1)
-      
-    ## j) model diagnostics
-      performance::check_overdispersion(TS_ep_repro_zinf_nb1_m_mod) 
-      performance::check_zeroinflation(TS_ep_repro_zinf_nb1_m_mod)
-      
-    ## k) model summary
-      summary(TS_ep_repro_zinf_nb1_m_mod)
-      
-    ## l) tidy effect estimates
-      TS_ep_repro_zinf_nb1_m_tidy <- 
-        tidy(TS_ep_repro_zinf_nb1_m_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)'| term == 'sexm')) %>%
-        select(c('term', 'estimate', #'std.error', 
-                 'conf.low', 'conf.high', 
-                 #'statistic', 
-                 'p.value'))  
-      
-    ## m) label model
-      TS_ep_repro_zinf_nb1_m_tidy$model <-
-        c('EP ~ TS')
-      
-    ## n) tidy TS_ep_repro_zinf_nb1_m_tidy by making a new column '95% CI'
-      TS_ep_repro_zinf_nb1_m_tidy$'95% CI' = 
-        paste(round(TS_ep_repro_zinf_nb1_m_tidy$conf.low, 3),
-              round(TS_ep_repro_zinf_nb1_m_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## o) tidy TS_ep_repro_zinf_nb1_m_tidy by removing extra columns and rows
-      TS_ep_repro_zinf_nb1_m_tidy <- TS_ep_repro_zinf_nb1_m_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## p) move 'model' to first column
-      TS_ep_repro_zinf_nb1_m_tidy <- TS_ep_repro_zinf_nb1_m_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
-      
-      
-  ### 6.8 Make formatted tables of the associations between natural
-      # breast brightness and tail streamer with reproduction - males
-    ## a) row bind breast_repro_zinf_nb1_m_tidy, 
-      # breast_ep_repro_zinf_nb1_m_tidy, TS_repro_zinf_nb1_m_tidy, and 
-      # TS_ep_repro_zinf_nb1_m_tidy,
-      male_plum_repro_sum <- bind_rows(breast_repro_zinf_nb1_m_tidy,
-                                      breast_ep_repro_zinf_nb1_m_tidy,
-                                      TS_repro_zinf_nb1_m_tidy, 
-                                      TS_ep_repro_zinf_nb1_m_tidy) 
-      
-    ## b) format table creating flextable object 
-      male_plum_repro_sum_frmt <- nice_table(male_plum_repro_sum, 
-                                            separate.header = T)
-      
-    ## c) preview the table as a word doc    
-      #print(male_plum_repro_sum_frmt, preview = 'docx')
-      
-    ## d) save male_plum_repro_sum_frmt as a word doc
-      flextable::save_as_docx(male_plum_repro_sum_frmt, 
-                              path = here('output/male_plum_repro_sum_frmt.docx'))  
-      
-
-
-        
 
 ###############################################################################
 ##############                  6. Export data                   ##############
@@ -1151,12 +546,9 @@
       # RData file.
       
     ## a) Save and export snps_plum_repro data data
-      save(file = here('data/4_MR_data.RData'), 
+      save(file = here('data/5_MR_data.RData'), 
            list = c('snps_plum_repro_df', 'snps_plum_repro_f_df',
-                    'snps_plum_repro_m_df'))
-      
-    ## b) Save and export natural plumage reproduction models for graphing
-      save(file = here('data/5_nat_plum_repro_mods.RData'), 
-           list = c('female_plum_repro_sum', 'male_plum_repro_sum'))
-      
+                    'snps_plum_repro_m_df', 'geno_freq_summary',
+                    'geno_freq_summary_f', 'geno_freq_summary_m'))
+   
   

@@ -144,7 +144,7 @@
 
       
 ###############################################################################
-##############   5. Step 2: Female fit values on reproduction    ##############
+##############   3. Step 2: Female fit values on reproduction    ##############
 ###############################################################################              
     
   # For Step 2: Female models, we will regress measures of reproductive
@@ -206,7 +206,192 @@
       snps_pred_plum_repro_zinf_nb1_f_tidy <- 
         snps_pred_plum_repro_zinf_nb1_f_tidy %>%
         relocate(model, .before = `Rate Ratio (exponentiated)`) 
-    
+ 
+      
+      
+    ### 5.1 SNPs predicted breast brightness on reproduction - female models
+      ## a) glmmTMB model for effect of predicted breast brightness on the 
+      # number of nestlings fledged from nest attempts 1 and 2
+      snps_pred_plum_repro_zinf_nb1_f_mod <-  glmmTMB(sum.fecundity ~ 
+                                                        scale(snps.plum.pred.val) +
+                                                        # proportional covariance matrix based on relatedness
+                                                        propto(0 + sample.id | 1, relate_mat_plum_repro_f),
+                                                      data = snps_plum_repro_f_df,
+                                                      ziformula=~1,
+                                                      family = nbinom1)
+      
+      ## b) model diagnostics
+      performance::check_overdispersion(snps_pred_plum_repro_zinf_nb1_f_mod) 
+      performance::check_zeroinflation(snps_pred_plum_repro_zinf_nb1_f_mod)
+      
+      ## c) model summary
+      summary(snps_pred_plum_repro_zinf_nb1_f_mod)
+      
+      ## d) tidy effect estimates
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        tidy(snps_pred_plum_repro_zinf_nb1_f_mod, 
+             effects = 'fixed',
+             conf.int = T,
+             conf.method = 'Wald',
+             conf.level = 0.95, 
+             exponentiate = T) %>%
+        filter(!(term == '(Intercept)')) %>%
+        select(c('term', 'estimate', 'std.error', 'conf.low', 'conf.high', 
+                 'statistic', 'p.value'))  
+      
+      ## e) label model
+      snps_pred_plum_repro_zinf_nb1_f_tidy$model <-
+        c('SNPs instrument - female')
+      
+      ## f) tidy snps_pred_plum_repro_zinf_nb1_f_tidy by making a new 
+      # column '95% CI'
+      snps_pred_plum_repro_zinf_nb1_f_tidy$'95% CI' = 
+        paste(round(snps_pred_plum_repro_zinf_nb1_f_tidy$conf.low, 3),
+              round(snps_pred_plum_repro_zinf_nb1_f_tidy$conf.high, 3), 
+              sep=", ")
+      
+      ## g) tidy snps_pred_plum_repro_zinf_nb1_f_tidy by removing extra 
+      # columns and rows
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        snps_pred_plum_repro_zinf_nb1_f_tidy %>%
+        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
+                 `P-value` = `p.value`)) %>%
+        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
+      
+      ## h) move 'model' to first column
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        snps_pred_plum_repro_zinf_nb1_f_tidy %>%
+        relocate(model, .before = `Rate Ratio (exponentiated)`) 
+ 
+      
+      ### 5.1 SNPs predicted breast brightness on reproduction - female models
+      ## a) glmmTMB model for effect of predicted breast brightness on the 
+      # number of nestlings fledged from nest attempts 1 and 2
+      snps_pred_plum_repro_zinf_nb1_f_mod <-  glmmTMB(sum.fecundity ~ 
+                                                        scale(snps.plum.pred.val) +
+                                                        # proportional covariance matrix based on relatedness
+                                                        propto(0 + sample.id | 1, relate_mat_plum_repro_f),
+                                                      data = snps_plum_repro_f_df,
+                                                      ziformula=~1,
+                                                      family = nbinom1)
+      
+      ## b) model diagnostics
+      performance::check_overdispersion(snps_pred_plum_repro_zinf_nb1_f_mod) 
+      performance::check_zeroinflation(snps_pred_plum_repro_zinf_nb1_f_mod)
+      
+      ## c) model summary
+      summary(snps_pred_plum_repro_zinf_nb1_f_mod)
+      
+      ## d) tidy effect estimates
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        tidy(snps_pred_plum_repro_zinf_nb1_f_mod, 
+             effects = 'fixed',
+             conf.int = T,
+             conf.method = 'Wald',
+             conf.level = 0.95, 
+             exponentiate = T) %>%
+        filter(!(term == '(Intercept)')) %>%
+        select(c('term', 'estimate', 'std.error', 'conf.low', 'conf.high', 
+                 'statistic', 'p.value'))  
+      
+      ## e) label model
+      snps_pred_plum_repro_zinf_nb1_f_tidy$model <-
+        c('SNPs instrument - female')
+      
+      ## f) tidy snps_pred_plum_repro_zinf_nb1_f_tidy by making a new 
+      # column '95% CI'
+      snps_pred_plum_repro_zinf_nb1_f_tidy$'95% CI' = 
+        paste(round(snps_pred_plum_repro_zinf_nb1_f_tidy$conf.low, 3),
+              round(snps_pred_plum_repro_zinf_nb1_f_tidy$conf.high, 3), 
+              sep=", ")
+      
+      ## g) tidy snps_pred_plum_repro_zinf_nb1_f_tidy by removing extra 
+      # columns and rows
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        snps_pred_plum_repro_zinf_nb1_f_tidy %>%
+        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
+                 `P-value` = `p.value`)) %>%
+        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
+      
+      ## h) move 'model' to first column
+      snps_pred_plum_repro_zinf_nb1_f_tidy <- 
+        snps_pred_plum_repro_zinf_nb1_f_tidy %>%
+        relocate(model, .before = `Rate Ratio (exponentiated)`) 
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      ### 5.3 PGS predicted breast brightness on reproduction - female models
+      ## a) glmmTMB model for effect of predicted breast brightness on the 
+      # number of nestlings fledged from nest attempts 1 and 2
+      pgs_pred_plum_repro_zinf_nb1_f_mod <-  glmmTMB(sum.fecundity ~ 
+                                                       scale(pgs.plum.pred.val) +
+                                                       # proportional covariance matrix based on relatedness
+                                                       propto(0 + sample.id | 1, relate_mat_plum_repro_f),
+                                                     data = snps_plum_repro_f_df,
+                                                     ziformula=~1,
+                                                     family = nbinom1)
+      
+      ## b) model diagnostics
+      performance::check_overdispersion(pgs_pred_plum_repro_zinf_nb1_f_mod) 
+      performance::check_zeroinflation(pgs_pred_plum_repro_zinf_nb1_f_mod)
+      
+      ## c) model summary
+      summary(pgs_pred_plum_repro_zinf_nb1_f_mod)
+      
+      ## d) tidy effect estimates
+      pgs_pred_plum_repro_zinf_nb1_f_tidy <- 
+        tidy(pgs_pred_plum_repro_zinf_nb1_f_mod, 
+             effects = 'fixed',
+             conf.int = T,
+             conf.method = 'Wald',
+             conf.level = 0.95, 
+             exponentiate = T) %>%
+        filter(!(term == '(Intercept)')) %>%
+        select(c('term', 'estimate', 'std.error', 'conf.low', 'conf.high', 
+                 'statistic', 'p.value'))  
+      
+      ## e) label model
+      pgs_pred_plum_repro_zinf_nb1_f_tidy$model <-
+        c('PGS instrument - female')
+      
+      ## f) tidy pgs_pred_plum_repro_zinf_nb1_f_tidy by making a new 
+      # column '95% CI'
+      pgs_pred_plum_repro_zinf_nb1_f_tidy$'95% CI' = 
+        paste(round(pgs_pred_plum_repro_zinf_nb1_f_tidy$conf.low, 3),
+              round(pgs_pred_plum_repro_zinf_nb1_f_tidy$conf.high, 3), 
+              sep=", ")
+      
+      ## g) tidy pgs_pred_plum_repro_zinf_nb1_f_tidy by removing extra 
+      # columns and rows
+      pgs_pred_plum_repro_zinf_nb1_f_tidy <- 
+        pgs_pred_plum_repro_zinf_nb1_f_tidy %>%
+        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
+                 `P-value` = `p.value`)) %>%
+        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
+      
+      ## h) move 'model' to first column
+      pgs_pred_plum_repro_zinf_nb1_f_tidy <- 
+        pgs_pred_plum_repro_zinf_nb1_f_tidy %>%
+        relocate(model, .before = `Rate Ratio (exponentiated)`) 
+      
+      
+      
+      ###############################################################################
+      ##############   4. Step 2: Mmale fit values on reproduction    ##############
+      ###############################################################################      
+     
       
   ### 5.2 SNPs predicted breast brightness on reproduction - male models
     ## a) glmmTMB model for effect of predicted breast brightness on the 
@@ -263,59 +448,7 @@
         relocate(model, .before = `Rate Ratio (exponentiated)`) 
     
       
-  ### 5.3 PGS predicted breast brightness on reproduction - female models
-    ## a) glmmTMB model for effect of predicted breast brightness on the 
-      # number of nestlings fledged from nest attempts 1 and 2
-      pgs_pred_plum_repro_zinf_nb1_f_mod <-  glmmTMB(sum.fecundity ~ 
-                            scale(pgs.plum.pred.val) +
-                        # proportional covariance matrix based on relatedness
-                            propto(0 + sample.id | 1, relate_mat_plum_repro_f),
-                            data = snps_plum_repro_f_df,
-                            ziformula=~1,
-                              family = nbinom1)
-      
-    ## b) model diagnostics
-      performance::check_overdispersion(pgs_pred_plum_repro_zinf_nb1_f_mod) 
-      performance::check_zeroinflation(pgs_pred_plum_repro_zinf_nb1_f_mod)
-      
-    ## c) model summary
-      summary(pgs_pred_plum_repro_zinf_nb1_f_mod)
-      
-    ## d) tidy effect estimates
-      pgs_pred_plum_repro_zinf_nb1_f_tidy <- 
-        tidy(pgs_pred_plum_repro_zinf_nb1_f_mod, 
-             effects = 'fixed',
-             conf.int = T,
-             conf.method = 'Wald',
-             conf.level = 0.95, 
-             exponentiate = T) %>%
-        filter(!(term == '(Intercept)')) %>%
-        select(c('term', 'estimate', 'std.error', 'conf.low', 'conf.high', 
-                 'statistic', 'p.value'))  
-      
-    ## e) label model
-      pgs_pred_plum_repro_zinf_nb1_f_tidy$model <-
-        c('PGS instrument - female')
-      
-    ## f) tidy pgs_pred_plum_repro_zinf_nb1_f_tidy by making a new 
-      # column '95% CI'
-      pgs_pred_plum_repro_zinf_nb1_f_tidy$'95% CI' = 
-        paste(round(pgs_pred_plum_repro_zinf_nb1_f_tidy$conf.low, 3),
-              round(pgs_pred_plum_repro_zinf_nb1_f_tidy$conf.high, 3), 
-              sep=", ")
-      
-    ## g) tidy pgs_pred_plum_repro_zinf_nb1_f_tidy by removing extra 
-      # columns and rows
-      pgs_pred_plum_repro_zinf_nb1_f_tidy <- 
-        pgs_pred_plum_repro_zinf_nb1_f_tidy %>%
-        rename(c(`Rate Ratio (exponentiated)` = `estimate`, 
-                 `P-value` = `p.value`)) %>%
-        select(c(`Rate Ratio (exponentiated)`, `95% CI`, `P-value`, `model`))
-      
-    ## h) move 'model' to first column
-      pgs_pred_plum_repro_zinf_nb1_f_tidy <- 
-        pgs_pred_plum_repro_zinf_nb1_f_tidy %>%
-        relocate(model, .before = `Rate Ratio (exponentiated)`) 
+ 
       
       
   ### 5.4 PGS predicted breast brightness on reproduction - male models
@@ -373,6 +506,17 @@
         relocate(model, .before = `Rate Ratio (exponentiated)`)    
       
 
+      
+      
+      
+      
+      
+      
+      ###############################################################################
+      ##############   5. Step 2: Tidy    ##############
+      ###############################################################################        
+      
+      
   ### 5.5 Make formatted tables of the associations between the instrument
         # breast brightness
     ## a) Combine Step 2: Female regression estimates into a tidy table

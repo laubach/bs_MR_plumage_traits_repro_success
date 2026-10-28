@@ -450,7 +450,7 @@
       # RData file.
       
     ## a) Save and export data for CHR 2015 pre-manipulation >= 20 RSSI
-      save(file = here('data/2-3_snps_pheno_repro_df.RData'), 
+      save(file = here('data/2-4_snps_pheno_repro_df.RData'), 
            list = c('snps_pheno_repro_df', 'snps_plum_repro_df',
                     'snps_TS_repro_df', 'snps_plum_repro_f_df', 
                     'snps_plum_repro_m_df', 'snps_TS_repro_f_df',

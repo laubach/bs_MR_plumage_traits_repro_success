@@ -246,7 +246,7 @@
       # RData file.
       
     ## a) Save and export relatedness data
-      save(file = here('data/3-4_relate_df.RData'), 
+      save(file = here('data/3-5_relate_df.RData'), 
            list = c('relate_mat', 'relate_coef_df', 
                     'relate_mat_plum_snps', 'relate_mat_TS_snps'
                     , 'relate_mat_plum_repro_f', 'relate_mat_plum_repro_m',
