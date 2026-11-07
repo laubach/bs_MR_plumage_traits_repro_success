@@ -11,7 +11,8 @@
 ################################################################################
 
 
-  ### PURPOSE: Tidy the 
+  ### PURPOSE: Model the association between plumage traits and reproductive
+             # success. 
   
   # Code Blocks
     # 1. Configure work space
@@ -134,7 +135,8 @@
                          # proportional covariance matrix based on relatedness
                                propto(0 + sample.id | 1, relate_mat_plum_snps),
                                                  data = snps_plum_repro_df,
-                                                 family = poisson)
+                                                 family = poisson,
+                         na.action = na.omit)
       
       
     ## b) udpate the Poisson model to include zero-inflation
@@ -196,7 +198,8 @@
                           propto(0 + sample.id | 1, relate_mat_plum_repro_f),
                           data = snps_plum_repro_f_df,
                           ziformula=~1,
-                              family = nbinom1)
+                              family = nbinom1,
+                      na.action = na.omit)
       
     ## b) model diagnostics
       performance::check_overdispersion(breast_repro_zinf_nb1_f_mod) 
@@ -247,7 +250,8 @@
                   propto(0 + sample.id | 1, relate_mat_plum_repro_f),
                   data = snps_plum_repro_f_df,
                   ziformula=~1,
-                    family = nbinom1)
+                    family = nbinom1,
+                  na.action = na.omit)
       
     ## j) model diagnostics
       performance::check_overdispersion(breast_ep_repro_zinf_nb1_f_mod) 
@@ -298,7 +302,8 @@
                   propto(0 + sample.id | 1, relate_mat_plum_repro_f),
                   data = snps_plum_repro_f_df,
                   ziformula=~1,
-                    family = nbinom1)
+                    family = nbinom1,
+                  na.action = na.omit)
       
     ## r) model diagnostics
       performance::check_overdispersion(breast_fecund_zinf_nb1_f_mod) 
@@ -351,7 +356,8 @@
                             propto(0 + sample.id | 1, relate_mat_plum_repro_f),
                             data = snps_plum_repro_f_df,
                             ziformula=~1,
-                              family = nbinom1)
+                              family = nbinom1,
+                        na.action = na.omit)
       
     ## b) model diagnostics
       performance::check_overdispersion(TS_repro_zinf_nb1_f_mod) 
@@ -402,7 +408,8 @@
                           propto(0 + sample.id | 1, relate_mat_plum_repro_f),
                           data = snps_plum_repro_f_df,
                           ziformula=~1,
-                             family = nbinom1)
+                             family = nbinom1,
+                       na.action = na.omit)
       
     ## j) model diagnostics
       performance::check_overdispersion(TS_ep_repro_zinf_nb1_f_mod) 
@@ -453,7 +460,8 @@
                             propto(0 + sample.id | 1, relate_mat_plum_repro_f),
                             data = snps_plum_repro_f_df,
                             ziformula=~1,
-                              family = nbinom1)
+                              family = nbinom1,
+                        na.action = na.omit)
       
     ## r) model diagnostics
       performance::check_overdispersion(TS_fecund_zinf_nb1_f_mod) 
@@ -532,7 +540,8 @@
                             propto(0 + sample.id | 1, relate_mat_plum_repro_m),
                             data = snps_plum_repro_m_df,
                             ziformula=~1,
-                              family = nbinom1)
+                              family = nbinom1,
+                         na.action = na.omit)
       
     ## b) model diagnostics
       performance::check_overdispersion(breast_repro_zinf_nb1_m_mod) 
@@ -583,7 +592,8 @@
                             propto(0 + sample.id | 1, relate_mat_plum_repro_m),
                             data = snps_plum_repro_m_df,
                             ziformula=~1,
-                              family = nbinom1)
+                              family = nbinom1,
+                        na.action = na.omit)
       
     ## j) model diagnostics
       performance::check_overdispersion(breast_ep_repro_zinf_nb1_m_mod) 
@@ -636,7 +646,8 @@
                             propto(0 + sample.id | 1, relate_mat_plum_repro_m),
                             data = snps_plum_repro_m_df,
                             ziformula=~1,
-                              family = nbinom1)
+                              family = nbinom1,
+                        na.action = na.omit)
       
     ## b) model diagnostics
       performance::check_overdispersion(TS_repro_zinf_nb1_m_mod) 
@@ -687,7 +698,8 @@
                             propto(0 + sample.id | 1, relate_mat_plum_repro_m),
                             data = snps_plum_repro_m_df,
                             ziformula=~1,
-                              family = nbinom1)
+                              family = nbinom1,
+                        na.action = na.omit)
       
     ## j) model diagnostics
       performance::check_overdispersion(TS_ep_repro_zinf_nb1_m_mod) 
@@ -750,8 +762,7 @@
       
     ## d) save male_plum_repro_sum_frmt as a word doc
       flextable::save_as_docx(male_plum_repro_sum_frmt, 
-                              
-                              path = here('output/male_plum_repro_sum_frmt.docx'))  
+                         path = here('output/male_plum_repro_sum_frmt.docx'))  
       
 
 

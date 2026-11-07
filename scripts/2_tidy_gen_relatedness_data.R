@@ -11,7 +11,7 @@
 ################################################################################
 
 
-  ### PURPOSE: Tidy the 
+  ### PURPOSE: Tidy the genetic relatedness data 
   
   # Code Blocks
     # 1. Configure work space

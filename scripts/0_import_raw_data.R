@@ -11,7 +11,7 @@
 ################################################################################
 
 
-  ### PURPOSE: Load barn swallow trait, reproductive success, and genome meta
+  ### PURPOSE: Load barn swallow trait, reproductive success, and genomic 
               # data from raw data files
   
   

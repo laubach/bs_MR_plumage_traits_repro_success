@@ -11,7 +11,7 @@
 ################################################################################
 
 
-  ### PURPOSE: Tidy the 
+  ### PURPOSE: Assess descriptive statistics and summaries of the data 
   
   # Code Blocks
     # 1. Configure work space
@@ -240,7 +240,7 @@
     ## a) assess monorphic breast brightness snps among females
       df_f_plum_snp_summary <- snps_plum_repro_df %>%
         filter(sex == 'f') %>%
-        pivot_longer(cols = c(kitlg.44277058:camk4.46901341), 
+        pivot_longer(cols = c(kitlg.44277058:apc.46065597), 
                      names_to = "snp", values_to = "dosage") %>%
         count(snp, dosage)
         
@@ -251,7 +251,7 @@
     ## c) assess monorphic breast brightness snps among males    
       df_m_plum_snp_summary <- snps_plum_repro_df %>%
         filter(sex == 'm') %>%
-        pivot_longer(cols = c(kitlg.44277058:camk4.46901341), 
+        pivot_longer(cols = c(kitlg.44277058:apc.46065597), 
                      names_to = "snp", values_to = "dosage") %>%
         count(snp, dosage)
       

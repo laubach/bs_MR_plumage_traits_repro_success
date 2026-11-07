@@ -11,7 +11,7 @@
 ################################################################################
 
 
-  ### PURPOSE: Tidy the 
+  ### PURPOSE: Tidy the SNPs, phenotype, and reproduction data
   
   # Code Blocks
     # 1. Configure work space
@@ -141,7 +141,7 @@
     #     mutate(max.avg.ts = pmax(mean.rts, mean.lts, na.rm = TRUE))
       
     ## j) create a variable rt.intact.avg.ts that is the average right tail 
-      # streamer length measure unless the right 
+      # streamer length measure unless the right TS is not intact
       pheno_reprod_df <- pheno_reprod_df %>% 
         mutate(rt.intact.avg.ts = case_when(intact.rts == 'y'
                                                  ~ mean.rts,
@@ -205,7 +205,7 @@
     ## d) move sample.id to first column position
       paternity_df <- paternity_df %>% relocate(c(mom.id, dad.id))
       
-    # NOTE: data has alread been filter to include just broods 1-2 and 
+    # NOTE: data has already been filter to include just broods 1-2 and 
       # exclude eggs collected
       
     ## e) Filter to remove mom CO_57558 from nest 'Hepp (near Cook)'
@@ -239,15 +239,15 @@
         rename(sample.id = mom.id) %>%
         ungroup()
       
-    ## k) Calculate female reproductive success (sum of her wp and ep nestlings
-      # that survive to ~12 days in broods 1 and 2)   
+    ## k) Calculate female total reproductive success (sum of her wp and ep 
+      # nestlings that survive to ~12 days in broods 1 and 2)   
       mom_repro_df <- mom_repro_df%>%
         group_by(mom.id, year) %>%
         summarise(tot.repro = length(fert.type)) %>%
         rename(sample.id = mom.id) %>%
         ungroup()
       
-    ## l) left join tot_repro_df to pheno_reprod_df
+    ## l) left join mom_ep_repro_df to mom_repro_df
       mom_repro_df <- mom_repro_df  %>%
         left_join(mom_ep_repro_df,
                   by = c('sample.id' = 'sample.id', 'year' = 'year'), 
@@ -270,15 +270,15 @@
         rename(sample.id = dad.id) %>%
         ungroup()
       
-    ## p) Calculate male reproductive success (sum of his wp and ep nestlings
-      # that survive to ~12 days in broods 1 and 2)
+    ## p) Calculate male total reproductive success (sum of his wp and ep 
+      # nestlings that survive to ~12 days in broods 1 and 2)
       dad_repro_df <- dad_repro_df%>%
         group_by(dad.id, year) %>%
         summarise(tot.repro = length(fert.type)) %>%
         rename(sample.id = dad.id) %>%
         ungroup()
       
-    ## q) left join tot_repro_df to pheno_reprod_df
+    ## q) left join dad_ep_repro_df to dad_repro_df
       dad_repro_df <- dad_repro_df  %>%
         left_join(dad_ep_repro_df,
                   by = c('sample.id' = 'sample.id', 'year' = 'year'), 
